@@ -64,7 +64,7 @@ object NetworkClient {
         } catch (e: ServerResponseException) {
             (NetworkResponse.Failure(e.message ?: "Server response error"))
         } catch (e: Exception) {
-            (NetworkResponse.Failure(e.message ?: "Unknown error"))
+            (NetworkResponse.Failure(e.message ?: "No Internet"))
         } finally {
         }
     }

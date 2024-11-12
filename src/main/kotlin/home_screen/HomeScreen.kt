@@ -51,6 +51,10 @@ fun HomeScreen(
                 homeScreenViewModel.extractZipFile(path = selectedFile!!)
             }
         }
+
+        Text("File may be zip of values folders or strings.xml")
+        Spacer(modifier = Modifier.height(10.dp))
+
         Button(onClick = {
             val fileDialog = FileDialog(Frame(), "Select File", FileDialog.LOAD)
             fileDialog.isVisible = true
@@ -62,9 +66,7 @@ fun HomeScreen(
             Text("Select File")
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
 
-        Text("File may be zip of values folders or strings.xml")
 
         Spacer(modifier = Modifier.height(16.dp))
 

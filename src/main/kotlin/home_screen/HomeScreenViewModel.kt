@@ -25,6 +25,8 @@ class HomeScreenViewModel(val translatorRepoImpl: MyTranslatorRepoImpl) {
     val separator = "\u2023\u2023\u2023\u2023"
     var extractedFiles: Map<String, String> = mapOf()
     var translationJob: Job? = null
+    var shouldParallelTasking = false
+
     fun updateSelectedLanguages(list: List<LanguageModel>) {
         _state.update {
             it.copy(selectedLanguagesList = list)
@@ -59,7 +61,10 @@ class HomeScreenViewModel(val translatorRepoImpl: MyTranslatorRepoImpl) {
                             to
                             content
                 )
+                shouldParallelTasking = false
             } else if (path.endsWith("zip", ignoreCase = true)) {
+                shouldParallelTasking = true
+
                 extractedFiles =
                     ZipExtractor.extractZipFile(path)
                 extractedFiles.forEach {
@@ -98,7 +103,7 @@ class HomeScreenViewModel(val translatorRepoImpl: MyTranslatorRepoImpl) {
                 if (!tempDir.exists()) {
                     tempDir.mkdirs() // Create the folder if it doesn't exist
                 }
-                 println("tempdir path = ${tempDir.path}")
+                println("tempdir path = ${tempDir.path}")
                 val filesXmlContent = FilesHelper.getFilesXmlContents(extractedFiles)
                 println("filesXmlContent= $filesXmlContent")
                 val basePairs = filesXmlContent["values/strings.xml"]?.keyValuePairs ?: emptyMap()
@@ -141,19 +146,17 @@ class HomeScreenViewModel(val translatorRepoImpl: MyTranslatorRepoImpl) {
                     it.copy(translationResult = TranslationResult.TranslationCompleted)
                 }
                 println("pathString path = ${tempDir.path}")
-                 val zipFilePath = "$downloadsPath/translation_comp.zip"
+                val zipFilePath = "$downloadsPath/translation_comp.zip"
                 FilesHelper.makeZipFile(
                     zipFilePath = zipFilePath,
                     tempDir = tempDir.path
                 )
-            }
-            catch (e:CancellationException){
+            } catch (e: CancellationException) {
                 throw e
-            }
-            catch (e:Exception){
-              _state.update {
-                  it.copy(translationResult = TranslationResult.TranslationFailed(e))
-              }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(translationResult = TranslationResult.TranslationFailed(e))
+                }
             }
         }
 
@@ -204,8 +207,21 @@ class HomeScreenViewModel(val translatorRepoImpl: MyTranslatorRepoImpl) {
         } else {
             println("Chunk not worked for entry ${entry.first}")
 
-            val jobs: List<Deferred<Pair<String, String>>> = missingKeys.map { (key, value) ->
-                async {
+            if (shouldParallelTasking) {
+                val jobs: List<Deferred<Pair<String, String>>> = missingKeys.map { (key, value) ->
+                    async {
+                        val result = translatorRepoImpl.getTranslation(query = value, toLanguage = file.languageCode)
+                        if (result is NetworkResponse.Success) {
+                            val translations = result.data ?: value
+                            key to translations
+                        } else {
+                            throw Exception(result.error)
+                        }
+                    }
+                }
+                translatedPairs = jobs.awaitAll().toMap()
+            } else {
+                translatedPairs = missingKeys.map { (key, value) ->
                     val result = translatorRepoImpl.getTranslation(query = value, toLanguage = file.languageCode)
                     if (result is NetworkResponse.Success) {
                         val translations = result.data ?: value
@@ -213,9 +229,8 @@ class HomeScreenViewModel(val translatorRepoImpl: MyTranslatorRepoImpl) {
                     } else {
                         throw Exception(result.error)
                     }
-                }
+                }.toMap()
             }
-            translatedPairs = jobs.awaitAll().toMap()
 
         }
 

@@ -1,4 +1,5 @@
 package home_screen.components
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.runtime.Composable
@@ -21,8 +22,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
 import common_components.HorizontalSpacer
+import data.util.exportLanguageCodesToJson
+import data.util.importLanguageCodesFromJson
 import domain.model.LanguageModel
 import org.koin.compose.koinInject
+import java.awt.FileDialog
+import java.awt.Frame
 
 @Composable
 fun MultiSelectLanguageDialog(
@@ -34,7 +39,10 @@ fun MultiSelectLanguageDialog(
     val tempSelected: SnapshotStateList<LanguageModel> =
         remember(selectedLanguages) { selectedLanguages.toMutableStateList() }
 
+    var showSnackbar by remember { mutableStateOf(false) }
+
     Dialog(onDismissRequest = onDismiss) {
+
         Surface(
             modifier = Modifier.padding(16.dp).fillMaxHeight(),
             shape = MaterialTheme.shapes.medium,
@@ -69,9 +77,23 @@ fun MultiSelectLanguageDialog(
                     HorizontalSpacer()
 
                     TextButton(onClick = {
+                        val fileDialog = FileDialog(Frame(), "Select Languages Json", FileDialog.LOAD)
+                        fileDialog.isVisible = true
+                        val file = fileDialog.file
+                        if (file != null) {
+                            val selectedFile = fileDialog.directory + file
+                            println("Selected Lang file = $selectedFile")
+                            val languageCodes = importLanguageCodesFromJson(selectedFile)
+                            println("Selected Lang file languageCodes= $languageCodes")
 
+                            availableLanguages.forEach {
+                                if (languageCodes.contains(it.langCode) && tempSelected.contains(it).not()) {
+                                    tempSelected.add(it)
+                                }
+                            }
+                        }
                     }) {
-                        Text("Select Popular")
+                        Text("Import Languages")
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -107,22 +129,51 @@ fun MultiSelectLanguageDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Row(
-                    horizontalArrangement = Arrangement.End,
-                    modifier = Modifier.fillMaxWidth()
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 5.dp)
                 ) {
-                    TextButton(onClick = onDismiss) {
-                        Text("Cancel")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
                     TextButton(
                         onClick = {
-                            onConfirm(tempSelected.toList())
-                            onDismiss()
-                        }
+                            val downloadsPath =
+                                System.getProperty("user.home") + "/Downloads/languages_${System.currentTimeMillis()}.txt"
+                            exportLanguageCodesToJson(downloadsPath, tempSelected.toList().map { it.langCode })
+                            showSnackbar = true
+                        },
+                        enabled = tempSelected.size > 0
                     ) {
-                        Text("Confirm")
+                        Text("Export Languages")
+                    }
+                    Row(
+                        horizontalArrangement = Arrangement.End,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        TextButton(onClick = onDismiss) {
+                            Text("Cancel")
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        TextButton(
+                            onClick = {
+                                onConfirm(tempSelected.toList())
+                                onDismiss()
+                            }
+                        ) {
+                            Text("Confirm")
+                        }
                     }
                 }
+            }
+
+        }
+
+        if (showSnackbar) {
+            Snackbar(
+                action = {
+                    TextButton(onClick = { showSnackbar = false }) {
+                        Text("Dismiss")
+                    }
+                }
+            ) {
+                Text("Exported successfully to Downloads")
             }
         }
     }
