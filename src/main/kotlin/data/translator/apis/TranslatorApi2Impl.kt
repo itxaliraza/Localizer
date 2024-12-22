@@ -21,7 +21,7 @@ class TranslatorApi2Impl : TranslatorApis {
         try {
             val queryEnc = URLEncoder.encode(query, Charsets.UTF_8.toString())
 
-            val translationUrl = String.format(
+             val translationUrl = String.format(
                 "https://translate.google.com/translate_a/single?&client=gtx&sl=%s&tl=%s&q=%s&dt=t",
                 fromLanguage,
                 toLanguage,
@@ -31,7 +31,7 @@ class TranslatorApi2Impl : TranslatorApis {
                 url = translationUrl, requestType = RequestTypes.Get
             )
 //
-            println("texttt=${text.data},${text.error}")
+//            println("texttt=${text.data},${text.error}")
             text.doIfSuccessOrFailure(mCallback = {
                 val result = getTranslationData(it!!)
                 return@withContext (NetworkResponse.Success(result))

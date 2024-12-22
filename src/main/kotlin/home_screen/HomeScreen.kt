@@ -179,7 +179,19 @@ fun HomeScreen(
             ) {
                 Text(text = "Start Translation")
             }
+            VerticalSpacer()
+            Row (verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable {
+                homeScreenViewModel.toggleParallel(state.parallelTranslation.not())
+            }){
+                Checkbox(checked = state.parallelTranslation, onCheckedChange = {
+                    homeScreenViewModel.toggleParallel(it)
+                })
+                HorizontalSpacer()
+                Text("Parallel Translation")
+            }
         }
+
+
     }
 }
 
@@ -261,13 +273,15 @@ val availableLanguagesList: List<LanguageModel> by lazy {
         LanguageModel("Haitian Creole", "ht"),
         LanguageModel("Hausa", "ha"),
         LanguageModel("Hawaiian", "haw"),
-        LanguageModel("Hebrew", "he"),
+        LanguageModel("Hebrew he", "he"),
+        LanguageModel("Hebrew iw", "iw"),
         LanguageModel("Hindi", "hi"),
         LanguageModel("Hmong", "hmn"),
         LanguageModel("Hungarian", "hu"),
         LanguageModel("Icelandic", "is"),
         LanguageModel("Igbo", "ig"),
-        LanguageModel("Indonesian", "id"),
+        LanguageModel("Indonesian id", "id"),
+        LanguageModel("Indonesian In", "in"),
         LanguageModel("Irish", "ga"),
         LanguageModel("Italian", "it"),
         LanguageModel("Japanese", "ja"),
@@ -297,6 +311,7 @@ val availableLanguagesList: List<LanguageModel> by lazy {
         LanguageModel("Norwegian", "no"),
         LanguageModel("Nyanja (Chichewa)", "ny"),
         LanguageModel("Odia (Oriya)", "or"),
+        LanguageModel("Oromo", "om"),
         LanguageModel("Pashto", "ps"),
         LanguageModel("Persian", "fa"),
         LanguageModel("Polish", "pl"),
@@ -333,7 +348,8 @@ val availableLanguagesList: List<LanguageModel> by lazy {
         LanguageModel("Vietnamese", "vi"),
         LanguageModel("Welsh", "cy"),
         LanguageModel("Xhosa", "xh"),
-        LanguageModel("Yiddish", "yi"),
+        LanguageModel("Yiddish yi", "yi"),
+        LanguageModel("Yiddish ji", "ji"),
         LanguageModel("Yoruba", "yo"),
         LanguageModel("Zulu", "zu")
     )

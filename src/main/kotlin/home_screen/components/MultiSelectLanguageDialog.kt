@@ -14,6 +14,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
@@ -22,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
 import common_components.HorizontalSpacer
+import common_components.VerticalSpacer
 import data.util.exportLanguageCodesToJson
 import data.util.importLanguageCodesFromJson
 import domain.model.LanguageModel
@@ -40,7 +43,18 @@ fun MultiSelectLanguageDialog(
         remember(selectedLanguages) { selectedLanguages.toMutableStateList() }
 
     var showSnackbar by remember { mutableStateOf(false) }
+    var searchedText by remember { mutableStateOf("") }
+    var filteredLanguages by remember { mutableStateOf(availableLanguages) }
 
+    LaunchedEffect(searchedText) {
+        if (searchedText.isEmpty()) {
+            filteredLanguages = availableLanguages
+        } else {
+            filteredLanguages = availableLanguages.filter {
+                it.langName.contains(searchedText, true) || it.langCode.contains(searchedText, true)
+            }
+        }
+    }
     Dialog(onDismissRequest = onDismiss) {
 
         Surface(
@@ -96,10 +110,23 @@ fun MultiSelectLanguageDialog(
                         Text("Import Languages")
                     }
                 }
+                VerticalSpacer()
+                TextField(modifier = Modifier.fillMaxWidth(), value = searchedText, onValueChange = {
+                    searchedText = it
+                }, trailingIcon = {
+                    if(searchedText.isNotEmpty()) {
+                        IconButton(onClick = {
+                            searchedText = ""
+                        }) {
+                            Icon(Icons.Filled.Close, null)
+                        }
+                    }
+                })
+
                 Spacer(modifier = Modifier.height(8.dp))
 
                 LazyColumn(modifier = Modifier.fillMaxHeight().weight(1f)) {
-                    items(availableLanguages) { language ->
+                    items(filteredLanguages) { language ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth().clickable {

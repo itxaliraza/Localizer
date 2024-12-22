@@ -7,5 +7,6 @@ data class HomeScreenState(
     val selectedLanguagesList: List<LanguageModel> = emptyList(),
     val quickTranslate: Boolean = false,
     val translationResult: TranslationResult = TranslationResult.Idle,
-    val showLoading: Boolean = false
+    val showLoading: Boolean = false,
+    val parallelTranslation:Boolean=true
 )

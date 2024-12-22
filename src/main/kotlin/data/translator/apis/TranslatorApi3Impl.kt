@@ -18,6 +18,7 @@ class TranslatorApi3Impl : TranslatorApis {
         query: String?
     ): NetworkResponse<String> = withContext(Dispatchers.IO) {
         try {
+
             val queryEnc = URLEncoder.encode(query, Charsets.UTF_8.toString())
 
             val translationUrl = String.format(

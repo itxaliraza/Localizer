@@ -38,7 +38,15 @@ object FilesHelper {
 
     fun extractLanguageCode(fileName: String): String {
         val regex = Regex("""values-([\w-]+)/""")
-        return regex.find(fileName)?.groups?.get(1)?.value ?: "en"
+        val code = regex.find(fileName)?.groups?.get(1)?.value ?: "en"
+        if (code == "zh-rCN") {
+            return "zh-CN"
+        } else if (code == "zh") {
+            return "zh-CN"
+        } else if (code == "zh-rTW") {
+            return "zh-TW"
+        }
+        return code
     }
 
     fun parseXml(xmlContent: String): Map<String, String> {
@@ -54,7 +62,7 @@ object FilesHelper {
             val key = stringElement.getAttribute("name")
             val value = stringElement.textContent
             val translatable: String = stringElement.getAttribute("translatable")
-            println("key = $key, value = $value, transl= $translatable")
+//            println("key = $key, value = $value, transl= $translatable")
             if (key != null && value != null && translatable != "false") {
                 keyValuePairs[key] = value
             }
@@ -106,16 +114,34 @@ object FilesHelper {
                 throw IllegalArgumentException("Not valid XML")
             }
 
+            // Normalize the document to avoid redundant spaces
+            doc.normalizeDocument()
+
+            // Collect existing keys to prevent duplicates
+            val existingStrings = root.getElementsByTagName("string")
+            val existingKeys = mutableSetOf<String>()
+            for (i in 0 until existingStrings.length) {
+                val node = existingStrings.item(i)
+                if (node is Element) {
+                    existingKeys.add(node.getAttribute("name"))
+                }
+            }
+
+            // Add new entries only if they don't already exist
             for ((key, value) in newEntries) {
-                val newString = doc.createElement("string")
-                newString.setAttribute("name", key)
-                newString.textContent = value
-                root.appendChild(newString)
+                if (!existingKeys.contains(key)) {
+                    val newString = doc.createElement("string")
+                    newString.setAttribute("name", key)
+                    newString.textContent = value
+                    root.appendChild(newString)
+                }
             }
 
             val transformer = TransformerFactory.newInstance().newTransformer()
             transformer.setOutputProperty(OutputKeys.INDENT, "yes")
-            transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4")
+            transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "0")
+            transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes")
+            doc.normalizeDocument()
 
             val result = StreamResult(StringWriter())
             transformer.transform(DOMSource(doc), result)
@@ -125,6 +151,36 @@ object FilesHelper {
             throw IllegalArgumentException("Error occurred: ${e.message}")
         }
     }
+    fun addNewEntriesToXmlNew(newEntries: Map<String, String>): String {
+        try {
+            val docFactory = DocumentBuilderFactory.newInstance()
+
+            val docBuilder = docFactory.newDocumentBuilder()
+
+            val doc = docBuilder.newDocument()
+            val rootElement = doc.createElement("resources")
+            doc.appendChild(rootElement)
+
+            for (node in newEntries) {
+                val element = doc.createElement("string")
+                element.setAttribute("name", node.key)
+                element.textContent = node.value
+                rootElement.appendChild(element)
+            }
+
+            val transformer = TransformerFactory.newInstance().newTransformer()
+            transformer.setOutputProperty(OutputKeys.INDENT, "yes")
+
+             val result = StreamResult(StringWriter())
+            transformer.transform(DOMSource(doc), result)
+            return result.writer.toString()
+
+        } catch (e: Exception) {
+            throw IllegalArgumentException("Error occurred: ${e.message}")
+        }
+    }
+
+
     fun makeZipFile(zipFilePath: String, tempDir: String) {
         try {
             ZipOutputStream(FileOutputStream(zipFilePath)).use { zipOut ->
@@ -143,7 +199,7 @@ object FilesHelper {
         } catch (e: Exception) {
             println("An error occurred while creating ZIP file: ${e.message}")
         } finally {
-         }
+        }
     }
 }
 

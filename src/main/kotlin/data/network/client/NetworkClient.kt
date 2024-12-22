@@ -44,7 +44,7 @@ object NetworkClient {
         headers: Map<String, String>? = null,
     ): NetworkResponse<String> {
         return try {
-            println("hitting =${url}")
+//            println("hitting =${url}")
             val response: String = requestType.getHttpBuilder(url) {
                 if (requestType is RequestTypes.Post) {
                     it.setBody(requestType.body)
@@ -76,7 +76,6 @@ object NetworkClient {
     ): HttpResponse {
         return when (this) {
             RequestTypes.Get -> {
-                println("Request Get")
 
                 client.get(url) {
 
@@ -85,10 +84,9 @@ object NetworkClient {
             }
 
             is RequestTypes.Post -> {
-                println("Request Post")
 
                 client.post(url) {
-                    println("Request ${this.body}")
+//                    println("Request ${this.body}")
 
                     callback.invoke(this)
                 }

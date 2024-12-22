@@ -17,6 +17,7 @@ class TranslatorApi1Impl :TranslatorApis{
         query: String?
     ): NetworkResponse<String> = withContext(Dispatchers.IO) {
         try {
+
             val queryEnc = URLEncoder.encode(query, Charsets.UTF_8.toString())
 
             val translationUrl = String.format(
@@ -54,7 +55,7 @@ class TranslatorApi1Impl :TranslatorApis{
 
 
     private fun getTranslationData(to_translate: String): String {
-    println("api 1 getTranslationData $to_translate")
+//    println("api 1 getTranslationData $to_translate")
             var nativeText = "class=\"t0\">"
             val result =
                 to_translate.substring(to_translate.indexOf(nativeText) + nativeText.length)
@@ -69,4 +70,8 @@ class TranslatorApi1Impl :TranslatorApis{
 
         return ""
     }
+}
+
+fun String.escapeApos(): String {
+    return this.replace("'","\\'")
 }
