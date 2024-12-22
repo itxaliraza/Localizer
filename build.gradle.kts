@@ -49,7 +49,10 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Exe)
             packageName = "Localizer"
-            packageVersion = "1.0.0"
+            packageVersion = "2.0.0"
+            windows {
+                perUserInstall = true  // Ensures the app is installed per user, not system-wide
+            }
         }
     }
 }

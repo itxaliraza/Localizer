@@ -22,7 +22,6 @@ class HomeScreenViewModel(val translatorRepoImpl: MyTranslatorRepoImpl) {
     val separator = "\u2023\u2023\u2023\u2023"
     var extractedFiles: Map<String, String> = mapOf()
     var translationJob: Job? = null
-    var shouldParallelTasking = false
 
     fun updateSelectedLanguages(list: List<LanguageModel>) {
         _state.update {
@@ -146,8 +145,7 @@ class HomeScreenViewModel(val translatorRepoImpl: MyTranslatorRepoImpl) {
                 val totalFilesToTranslate = state.value.selectedLanguagesList.size
 
                 fileXmlDataMutableMap.onEachIndexed { index, entry ->
-                    shouldParallelTasking = true
-                    if (entry.key != "values/strings.xml") {
+                     if (entry.key != "values/strings.xml") {
                         processFile(Pair(entry.key, entry.value), index , totalFilesToTranslate, basePairs, tempDir)
                     }
                 }
@@ -229,7 +227,7 @@ class HomeScreenViewModel(val translatorRepoImpl: MyTranslatorRepoImpl) {
         } else {
             println("Chunk not worked for entry ${entry.first}")
 
-            if (shouldParallelTasking) {
+            if (state.value.parallelTranslation) {
                 val jobs: List<Deferred<Pair<String, String>>> = missingKeys.map { (key, value) ->
                     async {
                         val result = translatorRepoImpl.getTranslation(query = value, toLanguage = file.languageCode)
