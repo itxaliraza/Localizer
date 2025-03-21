@@ -25,7 +25,10 @@ dependencies {
     implementation(compose.desktop.currentOs)
 
     implementation("io.ktor:ktor-client-cio:2.3.12")
-
+    implementation(compose.components.resources)
+    implementation(compose.material3)
+    implementation(compose.ui)
+    implementation(compose.material)
 
     implementation("org.slf4j:slf4j-api:2.0.9") // SLF4J API
     implementation("ch.qos.logback:logback-classic:1.4.11")
@@ -55,4 +58,8 @@ compose.desktop {
             }
         }
     }
+}
+compose.resources {
+    publicResClass = true
+    generateResClass = always
 }
