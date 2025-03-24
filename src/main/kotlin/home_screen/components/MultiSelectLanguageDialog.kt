@@ -47,10 +47,10 @@ fun MultiSelectLanguageDialog(
     var filteredLanguages by remember { mutableStateOf(availableLanguages) }
 
     LaunchedEffect(searchedText) {
-        if (searchedText.isEmpty()) {
-            filteredLanguages = availableLanguages
+        filteredLanguages = if (searchedText.isEmpty()) {
+            availableLanguages
         } else {
-            filteredLanguages = availableLanguages.filter {
+            availableLanguages.filter {
                 it.langName.contains(searchedText, true) || it.langCode.contains(searchedText, true)
             }
         }

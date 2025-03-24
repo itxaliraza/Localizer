@@ -2,28 +2,44 @@ package home_screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.Button
+import androidx.compose.material.Checkbox
+import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.material.Icon
+import androidx.compose.material.LinearProgressIndicator
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.ClickableText
-import androidx.compose.material.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import common_components.HorizontalSpacer
 import common_components.VerticalSpacer
+import data.availableLanguagesList
 import data.model.TranslationResult
 import data.util.openDownloadsFolder
 import domain.model.LanguageModel
@@ -101,8 +117,10 @@ fun HomeScreen(
         ) {
             items(state.selectedLanguagesList) {
                 Row(
-                    modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(MaterialTheme.colors.secondary)
-                        .padding(horizontal = 10.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier.clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colors.secondary)
+                        .padding(horizontal = 10.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(text = it.langName, color = MaterialTheme.colors.onPrimary)
                     HorizontalSpacer()
@@ -120,9 +138,6 @@ fun HomeScreen(
 
         VerticalSpacer(20)
 
-
-
-
         if (showDialog) {
             MultiSelectLanguageDialog(
                 availableLanguages = availableLanguagesList,
@@ -130,14 +145,12 @@ fun HomeScreen(
                 onDismiss = { showDialog = false },
                 onConfirm = { selected ->
                     homeScreenViewModel.updateSelectedLanguages(selected)
-//                    selectedLanguages = selected
                 }
             )
         }
 
         if (state.showLoading) {
             Dialog(onDismissRequest = {
-
             }) {
                 Box(modifier = Modifier.size(100.dp)) {
                     CircularProgressIndicator()
@@ -180,9 +193,9 @@ fun HomeScreen(
                 Text(text = "Start Translation")
             }
             VerticalSpacer()
-            Row (verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable {
                 homeScreenViewModel.toggleParallel(state.parallelTranslation.not())
-            }){
+            }) {
                 Checkbox(checked = state.parallelTranslation, onCheckedChange = {
                     homeScreenViewModel.toggleParallel(it)
                 })
@@ -236,121 +249,3 @@ fun TranslationFailed(exception: Exception) {
     }
 }
 
-
-val availableLanguagesList: List<LanguageModel> by lazy {
-    listOf(
-        LanguageModel("Afrikaans", "af"),
-        LanguageModel("Albanian", "sq"),
-        LanguageModel("Amharic", "am"),
-        LanguageModel("Arabic", "ar"),
-        LanguageModel("Armenian", "hy"),
-        LanguageModel("Azerbaijani", "az"),
-        LanguageModel("Basque", "eu"),
-        LanguageModel("Belarusian", "be"),
-        LanguageModel("Bengali", "bn"),
-        LanguageModel("Bosnian", "bs"),
-        LanguageModel("Bulgarian", "bg"),
-        LanguageModel("Catalan", "ca"),
-        LanguageModel("Cebuano", "ceb"),
-        LanguageModel("Chinese (Simplified)", "zh-CN"),
-        LanguageModel("Chinese (Traditional)", "zh-TW"),
-        LanguageModel("Corsican", "co"),
-        LanguageModel("Croatian", "hr"),
-        LanguageModel("Czech", "cs"),
-        LanguageModel("Danish", "da"),
-        LanguageModel("Dutch", "nl"),
-//        LanguageModel("English", "en"),
-        LanguageModel("Esperanto", "eo"),
-        LanguageModel("Estonian", "et"),
-        LanguageModel("Finnish", "fi"),
-        LanguageModel("French", "fr"),
-        LanguageModel("Frisian", "fy"),
-        LanguageModel("Galician", "gl"),
-        LanguageModel("Georgian", "ka"),
-        LanguageModel("German", "de"),
-        LanguageModel("Greek", "el"),
-        LanguageModel("Gujarati", "gu"),
-        LanguageModel("Haitian Creole", "ht"),
-        LanguageModel("Hausa", "ha"),
-        LanguageModel("Hawaiian", "haw"),
-        LanguageModel("Hebrew he", "he"),
-        LanguageModel("Hebrew iw", "iw"),
-        LanguageModel("Hindi", "hi"),
-        LanguageModel("Hmong", "hmn"),
-        LanguageModel("Hungarian", "hu"),
-        LanguageModel("Icelandic", "is"),
-        LanguageModel("Igbo", "ig"),
-        LanguageModel("Indonesian id", "id"),
-        LanguageModel("Indonesian In", "in"),
-        LanguageModel("Irish", "ga"),
-        LanguageModel("Italian", "it"),
-        LanguageModel("Japanese", "ja"),
-        LanguageModel("Javanese", "jw"),
-        LanguageModel("Kannada", "kn"),
-        LanguageModel("Kazakh", "kk"),
-        LanguageModel("Khmer", "km"),
-        LanguageModel("Kinyarwanda", "rw"),
-        LanguageModel("Korean", "ko"),
-        LanguageModel("Kurdish", "ku"),
-        LanguageModel("Kyrgyz", "ky"),
-        LanguageModel("Lao", "lo"),
-        LanguageModel("Latin", "la"),
-        LanguageModel("Latvian", "lv"),
-        LanguageModel("Lithuanian", "lt"),
-        LanguageModel("Luxembourgish", "lb"),
-        LanguageModel("Macedonian", "mk"),
-        LanguageModel("Malagasy", "mg"),
-        LanguageModel("Malay", "ms"),
-        LanguageModel("Malayalam", "ml"),
-        LanguageModel("Maltese", "mt"),
-        LanguageModel("Maori", "mi"),
-        LanguageModel("Marathi", "mr"),
-        LanguageModel("Mongolian", "mn"),
-        LanguageModel("Myanmar (Burmese)", "my"),
-        LanguageModel("Nepali", "ne"),
-        LanguageModel("Norwegian", "no"),
-        LanguageModel("Nyanja (Chichewa)", "ny"),
-        LanguageModel("Odia (Oriya)", "or"),
-        LanguageModel("Oromo", "om"),
-        LanguageModel("Pashto", "ps"),
-        LanguageModel("Persian", "fa"),
-        LanguageModel("Polish", "pl"),
-        LanguageModel("Portuguese", "pt"),
-        LanguageModel("Punjabi", "pa"),
-        LanguageModel("Romanian", "ro"),
-        LanguageModel("Russian", "ru"),
-        LanguageModel("Samoan", "sm"),
-        LanguageModel("Scots Gaelic", "gd"),
-        LanguageModel("Serbian", "sr"),
-        LanguageModel("Sesotho", "st"),
-        LanguageModel("Shona", "sn"),
-        LanguageModel("Sindhi", "sd"),
-        LanguageModel("Sinhala (Sinhalese)", "si"),
-        LanguageModel("Slovak", "sk"),
-        LanguageModel("Slovenian", "sl"),
-        LanguageModel("Somali", "so"),
-        LanguageModel("Spanish", "es"),
-        LanguageModel("Sundanese", "su"),
-        LanguageModel("Swahili", "sw"),
-        LanguageModel("Swedish", "sv"),
-        LanguageModel("Tagalog (Filipino)", "tl"),
-        LanguageModel("Tajik", "tg"),
-        LanguageModel("Tamil", "ta"),
-        LanguageModel("Tatar", "tt"),
-        LanguageModel("Telugu", "te"),
-        LanguageModel("Thai", "th"),
-        LanguageModel("Turkish", "tr"),
-        LanguageModel("Turkmen", "tk"),
-        LanguageModel("Ukrainian", "uk"),
-        LanguageModel("Urdu", "ur"),
-        LanguageModel("Uyghur", "ug"),
-        LanguageModel("Uzbek", "uz"),
-        LanguageModel("Vietnamese", "vi"),
-        LanguageModel("Welsh", "cy"),
-        LanguageModel("Xhosa", "xh"),
-        LanguageModel("Yiddish yi", "yi"),
-        LanguageModel("Yiddish ji", "ji"),
-        LanguageModel("Yoruba", "yo"),
-        LanguageModel("Zulu", "zu")
-    )
-}
