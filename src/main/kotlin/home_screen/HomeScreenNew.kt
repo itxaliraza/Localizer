@@ -39,7 +39,6 @@ import com.example.localizer.generated.resources.ic_checked_box
 import com.example.localizer.generated.resources.ic_unchecked_box
 import common_components.EditText
 import common_components.HorizontalSpacer
-import common_components.VerticalSpacer
 import domain.model.LanguageModel
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.koinInject
@@ -57,8 +56,8 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
             scrollState.scrollToItem(0)
         }
     }
-    LaunchedEffect(selectAll) {
-        viewModel.updateSelectedLanguages(null, selectAll)
+    LaunchedEffect(state.selectedLanguagesList) {
+        selectAll = state.selectedLanguagesList == state.availableLanguages
     }
     Column(modifier = Modifier.fillMaxSize()) {
         Row(modifier = Modifier.fillMaxSize()) {
@@ -90,12 +89,20 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
                         )
                 ) {
                     Column(modifier = Modifier.fillMaxSize().padding(5.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth()
+                                .padding(horizontal = 10.dp, vertical = 5.dp)
+                        ) { }
                         LazyVerticalGrid(
                             columns = GridCells.Adaptive(145.dp),
                             state = scrollState, modifier = Modifier.fillMaxSize().weight(1f)
                         ) {
                             items(state.filteredList, key = { it.langCode }) {
-                                LanguagesItems(model = it, isSelected = state.selectedLanguagesList.contains(it)) { model ->
+                                LanguagesItems(
+                                    model = it,
+                                    isSelected = state.selectedLanguagesList.contains(it),
+                                    selectAll = state.selectedLanguagesList == state.availableLanguages
+                                ) { model ->
                                     viewModel.updateSelectedLanguages(model)
                                 }
                             }
