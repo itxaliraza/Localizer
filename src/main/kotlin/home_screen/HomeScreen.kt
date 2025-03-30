@@ -39,10 +39,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import common_components.HorizontalSpacer
 import common_components.VerticalSpacer
-import data.availableLanguagesList
+import data.availableLanguages
 import data.model.TranslationResult
 import data.util.openDownloadsFolder
-import domain.model.LanguageModel
 import home_screen.components.MultiSelectLanguageDialog
 import org.koin.compose.koinInject
 import java.awt.FileDialog
@@ -115,7 +114,7 @@ fun HomeScreen(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(horizontal = 10.dp)
         ) {
-            items(state.selectedLanguagesList) {
+            items(state.selectedLanguages) {
                 Row(
                     modifier = Modifier.clip(RoundedCornerShape(10.dp))
                         .background(MaterialTheme.colors.secondary)
@@ -140,8 +139,8 @@ fun HomeScreen(
 
         if (showDialog) {
             MultiSelectLanguageDialog(
-                availableLanguages = availableLanguagesList,
-                selectedLanguages = state.selectedLanguagesList,
+                availableLanguages = availableLanguages(),
+                selectedLanguages = state.selectedLanguages,
                 onDismiss = { showDialog = false },
                 onConfirm = { selected ->
                     homeScreenViewModel.updateSelectedLanguages(selected)
@@ -188,7 +187,7 @@ fun HomeScreen(
                 onClick = {
                     homeScreenViewModel.translate()
                 },
-                enabled = state.selectedLanguagesList.isNotEmpty() && selectedFile?.isNotEmpty() == true && (state.translationResult as? TranslationResult.TranslationFailed)?.exc?.message != "Not valid file"
+                enabled = state.selectedLanguages.isNotEmpty() && selectedFile?.isNotEmpty() == true && (state.translationResult as? TranslationResult.TranslationFailed)?.exc?.message != "Not valid file"
             ) {
                 Text(text = "Start Translation")
             }

@@ -3,7 +3,7 @@ package home_screen
 import data.FileXmlData
 import data.FilesHelper
 import data.FilesHelper.extractLanguageCode
-import data.availableLanguagesList
+import data.availableLanguages
 import data.model.TranslationResult
 import data.network.NetworkResponse
 import data.translator.MyTranslatorRepoImpl
@@ -36,21 +36,21 @@ class HomeScreenViewModel(private val translatorRepoImpl: MyTranslatorRepoImpl) 
     init {
         _state.update {
             it.copy(
-                availableLanguages = availableLanguagesList,
-                filteredList = availableLanguagesList
+                availableLanguages = availableLanguages(),
+                filteredList = availableLanguages()
             )
         }
     }
 
     fun updateSelectedLanguages(list: List<LanguageModel>) {
         _state.update {
-            it.copy(selectedLanguagesList = list)
+            it.copy(selectedLanguages = list)
         }
     }
 
     fun updateSelectedLanguages(model: LanguageModel?, selectAll: Boolean = false) {
         _state.update { state ->
-            val selectedList = state.selectedLanguagesList.toMutableSet()
+            val selectedList = state.selectedLanguages.toMutableSet()
             when {
                 selectAll -> {
                     selectedList.apply {
@@ -58,21 +58,22 @@ class HomeScreenViewModel(private val translatorRepoImpl: MyTranslatorRepoImpl) 
                         else addAll(state.filteredList)
                     }
                 }
+
                 model != null -> {
                     if (!selectedList.add(model)) selectedList.remove(model)
                 }
             }
 
-            state.copy(selectedLanguagesList = selectedList.toList())
+            state.copy(selectedLanguages = selectedList.toList())
         }
     }
 
 
     fun removeLanguage(langModel: LanguageModel) {
-        val currentList = state.value.selectedLanguagesList.toMutableList()
+        val currentList = state.value.selectedLanguages.toMutableList()
         currentList.remove(langModel)
         _state.update {
-            it.copy(selectedLanguagesList = currentList)
+            it.copy(selectedLanguages = currentList)
         }
     }
 
@@ -111,11 +112,11 @@ class HomeScreenViewModel(private val translatorRepoImpl: MyTranslatorRepoImpl) 
                 }
                 println("complete extracted zip =${extractedFiles.size}")
 
-                val oldList = state.value.selectedLanguagesList.map { it.langCode }
+                val oldList = state.value.selectedLanguages.map { it.langCode }
                 val selectedLanguages: List<LanguageModel> = extractedFiles.mapNotNull { entry ->
                     val code = extractLanguageCode(entry.key)
                     println("Lang code= $code")
-                    val found = availableLanguagesList.firstOrNull {
+                    val found = availableLanguages().firstOrNull {
                         (it.langCode == code || it.langCode == "en") && !oldList.contains(code)
                     }
                     if (found == null) {
@@ -126,12 +127,12 @@ class HomeScreenViewModel(private val translatorRepoImpl: MyTranslatorRepoImpl) 
                 println("selectedLanguages size= ${selectedLanguages.size}, actual= $selectedLanguages")
 
 
-                val stateLanguages = state.value.selectedLanguagesList.toMutableList()
+                val stateLanguages = state.value.selectedLanguages.toMutableList()
                 stateLanguages.addAll(selectedLanguages)
                 _state.update {
-                    it.copy(selectedLanguagesList = stateLanguages)
+                    it.copy(selectedLanguages = stateLanguages)
                 }
-                println("current state size= ${state.value.selectedLanguagesList.size}, actual= ${state.value.selectedLanguagesList}")
+                println("current state size= ${state.value.selectedLanguages.size}, actual= ${state.value.selectedLanguages}")
 
             } else {
                 _state.update {
@@ -144,7 +145,7 @@ class HomeScreenViewModel(private val translatorRepoImpl: MyTranslatorRepoImpl) 
     fun translate() {
         translationJob = CoroutineScope(Dispatchers.IO).launch {
             try {
-                val stateLangs = state.value.selectedLanguagesList.map { it.langCode }
+                val stateLangs = state.value.selectedLanguages.map { it.langCode }
                 val downloadsPath = System.getProperty("user.home") + "/Downloads"
                 val currentTime = SimpleDateFormat("dd_MMM", Locale.getDefault()).format(Date())
                 val newFolderPath =
@@ -178,14 +179,14 @@ class HomeScreenViewModel(private val translatorRepoImpl: MyTranslatorRepoImpl) 
 
                 println("filesXmlContent existingLanguages = ${existingLanguages.size} $existingLanguages")
 
-                val missingLanguages = state.value.selectedLanguagesList.map { it.langCode }
+                val missingLanguages = state.value.selectedLanguages.map { it.langCode }
                     .toSet() - existingLanguages
                 println("filesXmlContent missingLanguages = ${missingLanguages.size} $missingLanguages")
 
                 println("Languages to translate = ${missingLanguages} + ${fileXmlDataMutableMap.keys}")
-                println("Total Languages to translate = ${state.value.selectedLanguagesList.size}")
+                println("Total Languages to translate = ${state.value.selectedLanguages.size}")
 
-                val totalFilesToTranslate = state.value.selectedLanguagesList.size
+                val totalFilesToTranslate = state.value.selectedLanguages.size
 
                 fileXmlDataMutableMap.onEachIndexed { index, entry ->
                     if (entry.key != "values/strings.xml") {

@@ -1,34 +1,46 @@
 package home_screen.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.Checkbox
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Snackbar
+import androidx.compose.material.Surface
+import androidx.compose.material.Text
+import androidx.compose.material.TextButton
+import androidx.compose.material.TextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.window.Dialog
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.DialogWindow
+import androidx.compose.ui.window.Dialog
 import common_components.HorizontalSpacer
 import common_components.VerticalSpacer
 import data.util.exportLanguageCodesToJson
 import data.util.importLanguageCodesFromJson
 import domain.model.LanguageModel
-import org.koin.compose.koinInject
 import java.awt.FileDialog
 import java.awt.Frame
 
@@ -91,7 +103,8 @@ fun MultiSelectLanguageDialog(
                     HorizontalSpacer()
 
                     TextButton(onClick = {
-                        val fileDialog = FileDialog(Frame(), "Select Languages Json", FileDialog.LOAD)
+                        val fileDialog =
+                            FileDialog(Frame(), "Select Languages Json", FileDialog.LOAD)
                         fileDialog.isVisible = true
                         val file = fileDialog.file
                         if (file != null) {
@@ -101,7 +114,9 @@ fun MultiSelectLanguageDialog(
                             println("Selected Lang file languageCodes= $languageCodes")
 
                             availableLanguages.forEach {
-                                if (languageCodes.contains(it.langCode) && tempSelected.contains(it).not()) {
+                                if (languageCodes.contains(it.langCode) && tempSelected.contains(it)
+                                        .not()
+                                ) {
                                     tempSelected.add(it)
                                 }
                             }
@@ -111,17 +126,21 @@ fun MultiSelectLanguageDialog(
                     }
                 }
                 VerticalSpacer()
-                TextField(modifier = Modifier.fillMaxWidth(), value = searchedText, onValueChange = {
-                    searchedText = it
-                }, trailingIcon = {
-                    if(searchedText.isNotEmpty()) {
-                        IconButton(onClick = {
-                            searchedText = ""
-                        }) {
-                            Icon(Icons.Filled.Close, null)
+                TextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    value = searchedText,
+                    onValueChange = {
+                        searchedText = it
+                    },
+                    trailingIcon = {
+                        if (searchedText.isNotEmpty()) {
+                            IconButton(onClick = {
+                                searchedText = ""
+                            }) {
+                                Icon(Icons.Filled.Close, null)
+                            }
                         }
-                    }
-                })
+                    })
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -163,7 +182,9 @@ fun MultiSelectLanguageDialog(
                         onClick = {
                             val downloadsPath =
                                 System.getProperty("user.home") + "/Downloads/languages_${System.currentTimeMillis()}.txt"
-                            exportLanguageCodesToJson(downloadsPath, tempSelected.toList().map { it.langCode })
+                            exportLanguageCodesToJson(
+                                downloadsPath,
+                                tempSelected.toList().map { it.langCode })
                             showSnackbar = true
                         },
                         enabled = tempSelected.size > 0

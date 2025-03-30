@@ -50,10 +50,12 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Exe)
-            packageName = "Localizer"
+            packageName = "Fast Localizer"
             packageVersion = "2.0.0"
             windows {
                 perUserInstall = true  // Ensures the app is installed per user, not system-wide
+                shortcut = true
+                menuGroup = "Fast Localizer"
             }
         }
     }

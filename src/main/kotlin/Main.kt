@@ -58,7 +58,7 @@ import java.awt.event.MouseMotionAdapter
 fun main() = application {
     Window(
         onCloseRequest = ::exitApplication,
-        title = "Strings Forge",
+        title = "Fast Localizer",
         undecorated = true,
         icon = painterResource(Res.drawable.app_icon),
     ) {
@@ -110,7 +110,7 @@ fun CustomTitleBar(window: Window, exitApp: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "Strings Forge",
+                    "Fast Localizer",
                     color = Color.White,
                     fontSize = 18.sp,
                     modifier = Modifier.weight(1f)
