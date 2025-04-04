@@ -90,7 +90,8 @@ class HomeScreenViewModel(private val translatorRepoImpl: MyTranslatorRepoImpl) 
     }
 
 
-    fun extractZipFile(path: String) {
+    fun extractZipFile(path: String?) {
+        if (path == null) return
         CoroutineScope(Dispatchers.IO).launch {
             _state.update {
                 it.copy(translationResult = TranslationResult.Idle)

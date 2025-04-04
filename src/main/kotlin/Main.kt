@@ -1,7 +1,5 @@
 import androidx.compose.desktop.ui.tooling.preview.Preview
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,9 +8,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,12 +19,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
@@ -38,17 +32,18 @@ import com.example.localizer.generated.resources.ic_full_screen
 import com.example.localizer.generated.resources.ic_minimize
 import com.example.localizer.generated.resources.ic_minus
 import common_components.HorizontalSpacer
-import common_components.VerticalSpacer
+import common_components.ImageButtons
 import di.SharedModule
 import home_screen.HomeScreenNew
-import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.koin.core.context.startKoin
-import theme.PrimaryColor
 import theme.LightColors
+import theme.PrimaryColor
 import theme.ScreenColor
 import java.awt.Dimension
 import java.awt.Frame
+import java.awt.Rectangle
+import java.awt.Toolkit
 import java.awt.Window
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
@@ -90,7 +85,6 @@ fun App(window: Window, exitApp: () -> Unit) {
     }
 }
 
-
 @Composable
 fun CustomTitleBar(window: Window, exitApp: () -> Unit) {
     var isMaximized by remember { mutableStateOf(false) }
@@ -115,6 +109,14 @@ fun CustomTitleBar(window: Window, exitApp: () -> Unit) {
                     fontSize = 18.sp,
                     modifier = Modifier.weight(1f)
                 )
+                ImageButtons(
+                    icon = Icons.Default.Info,
+                    size = 30,
+                    onClick = {
+
+                    }
+                )
+                HorizontalSpacer(5)
                 // Minimize Button
                 ImageButtons(
                     icon = Res.drawable.ic_minus,
@@ -131,8 +133,13 @@ fun CustomTitleBar(window: Window, exitApp: () -> Unit) {
                     },
                     onClick = {
                         isMaximized = !isMaximized
-                        frame?.extendedState =
-                            if (isMaximized) Frame.MAXIMIZED_BOTH else Frame.NORMAL
+                        if (isMaximized) {
+//                             frame?.extendedState=Frame.MAXIMIZED_BOTH
+                            maximizeWindow(window)
+                        } else {
+                            restoreWindow(window)
+//                            frame?.extendedState= Frame.NORMAL
+                        }
                     }
                 )
                 HorizontalSpacer(5)
@@ -145,41 +152,6 @@ fun CustomTitleBar(window: Window, exitApp: () -> Unit) {
         }
 
     }
-}
-
-@OptIn(ExperimentalComposeUiApi::class)
-@Composable
-fun ImageButtons(
-    icon: DrawableResource = Res.drawable.ic_close,
-    color: Color = Color.Gray,
-    onClick: () -> Unit
-) {
-    var isHovered by remember { mutableStateOf(false) }
-    Image(
-        painter = painterResource(icon),
-        contentDescription = "", colorFilter = ColorFilter.tint(Color.White),
-        modifier = Modifier
-            .size(25.dp)
-            .background(
-                color = if (isHovered) {
-                    color.copy(alpha = 0.5f)
-                } else {
-                    Color.Transparent
-                },
-                shape = RoundedCornerShape(3.dp)
-            )
-            .padding(5.dp)
-            .clickable {
-                onClick.invoke()
-            }
-            .onPointerEvent(PointerEventType.Enter) {
-                isHovered = true
-            }
-            .onPointerEvent(PointerEventType.Exit) {
-                isHovered = false
-            },
-
-        )
 }
 
 
@@ -211,4 +183,23 @@ fun setupWindowDragging(window: Window) {
             }
         }
     })
+}
+
+fun maximizeWindow(window: Window) {
+    val screenSize = Toolkit.getDefaultToolkit().screenSize
+    val insets = Toolkit.getDefaultToolkit().getScreenInsets(window.graphicsConfiguration)
+    // Calculate available size (excluding taskbar)
+    val availableWidth = screenSize.width - insets.left - insets.right
+    val availableHeight = screenSize.height - insets.top - insets.bottom
+
+    // Set the window bounds manually
+    window.bounds = Rectangle(insets.left, insets.top, availableWidth, availableHeight)
+}
+
+fun restoreWindow(window: Window, defaultWidth: Int = 800, defaultHeight: Int = 600) {
+    // Restore to default size and center it
+    val screenSize = Toolkit.getDefaultToolkit().screenSize
+    val x = (screenSize.width - defaultWidth) / 2
+    val y = (screenSize.height - defaultHeight) / 2
+    window.bounds = Rectangle(x, y, defaultWidth, defaultHeight)
 }

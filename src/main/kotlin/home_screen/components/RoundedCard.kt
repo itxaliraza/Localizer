@@ -11,6 +11,7 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import theme.ScreenColor
@@ -21,16 +22,21 @@ fun RoundedCard(
     modifier: Modifier = Modifier,
     elevation: Int = 2,
     radius: Int = 7,
-    bgColor: Color=ScreenColor,
+    bgColor: Color = ScreenColor,
+    height: Int = 40,
+    clickEnable: Boolean = true,
     onClick: () -> Unit = {},
     content: @Composable () -> Unit
 ) {
     Card(
+        enabled = clickEnable,
         elevation = elevation.dp,
         shape = RoundedCornerShape(radius.dp),
         backgroundColor = bgColor,
         onClick = { onClick() },
-        modifier = modifier.fillMaxWidth().padding(5.dp).height(40.dp)
+        modifier = modifier.fillMaxWidth()
+            .alpha(if (clickEnable) 1f else 0.5f)
+            .padding(5.dp).height(height.dp)
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),

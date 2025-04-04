@@ -289,7 +289,7 @@ fun availableLanguages(): ArrayList<LanguageModel> {
 
                 )
         )
-        add(LanguageModel("Breton", "Brezhoneg", "bs", "", "", true))
+        add(LanguageModel("Breton", "Brezhoneg", "br", "", "", true))
         add(
             LanguageModel(
                 "Bulgarian",
@@ -1607,7 +1607,7 @@ fun availableLanguages(): ArrayList<LanguageModel> {
 
                 )
         )
-        add(LanguageModel("Wolof", "Wolof", "cy", "wo", "", true))
+        add(LanguageModel("Wolof", "Wolof", "wo", "wo", "", true))
         add(LanguageModel("Xhosa", "isiXhosa", "xh", "", ""))
         add(
             LanguageModel(
