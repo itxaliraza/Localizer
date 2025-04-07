@@ -3,37 +3,77 @@ package home_screen
 import data.FileXmlData
 import data.FilesHelper
 import data.FilesHelper.extractLanguageCode
+import data.availableLanguages
 import data.model.TranslationResult
 import data.network.NetworkResponse
 import data.translator.MyTranslatorRepoImpl
 import data.util.ZipExtractor
 import domain.model.LanguageModel
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
-class HomeScreenViewModel(val translatorRepoImpl: MyTranslatorRepoImpl) {
+class HomeScreenViewModel(private val translatorRepoImpl: MyTranslatorRepoImpl) {
     private val _state = MutableStateFlow(HomeScreenState())
     val state = _state.asStateFlow()
-    val separator = "\u2023\u2023\u2023\u2023"
-    var extractedFiles: Map<String, String> = mapOf()
-    var translationJob: Job? = null
+    private val separator = "\u2023\u2023\u2023\u2023"
+    private var extractedFiles: Map<String, String> = mapOf()
+    private var translationJob: Job? = null
 
-    fun updateSelectedLanguages(list: List<LanguageModel>) {
+    init {
         _state.update {
-            it.copy(selectedLanguagesList = list)
+            it.copy(
+                availableLanguages = availableLanguages(),
+                filteredList = availableLanguages()
+            )
         }
     }
 
+    fun updateSelectedLanguages(list: List<LanguageModel>) {
+        _state.update {
+            it.copy(selectedLanguages = list)
+        }
+    }
+
+    fun updateSelectedLanguages(model: LanguageModel?, selectAll: Boolean = false) {
+        _state.update { state ->
+            val selectedList = state.selectedLanguages.toMutableSet()
+            when {
+                selectAll -> {
+                    selectedList.apply {
+                        if (size == state.filteredList.size) clear()
+                        else addAll(state.filteredList)
+                    }
+                }
+
+                model != null -> {
+                    if (!selectedList.add(model)) selectedList.remove(model)
+                }
+            }
+
+            state.copy(selectedLanguages = selectedList.toList())
+        }
+    }
+
+
     fun removeLanguage(langModel: LanguageModel) {
-        val currentList = state.value.selectedLanguagesList.toMutableList()
+        val currentList = state.value.selectedLanguages.toMutableList()
         currentList.remove(langModel)
         _state.update {
-            it.copy(selectedLanguagesList = currentList)
+            it.copy(selectedLanguages = currentList)
         }
     }
 
@@ -43,20 +83,22 @@ class HomeScreenViewModel(val translatorRepoImpl: MyTranslatorRepoImpl) {
         }
     }
 
-    fun toggleParallel(checked:Boolean) {
+    fun toggleParallel(checked: Boolean) {
         _state.update {
             it.copy(parallelTranslation = checked)
         }
     }
 
 
-    fun extractZipFile(path: String) {
+    fun extractZipFile(path: String?) {
+        if (path == null) return
         CoroutineScope(Dispatchers.IO).launch {
             _state.update {
                 it.copy(translationResult = TranslationResult.Idle)
             }
             if (path.endsWith("strings.xml")) {
-                val content = File(path).readText() // or use zis.readBytes().decodeToString() for a ZipInputStream
+                val content =
+                    File(path).readText() // or use zis.readBytes().decodeToString() for a ZipInputStream
 
                 extractedFiles = mapOf(
                     "values/strings.xml"
@@ -71,11 +113,11 @@ class HomeScreenViewModel(val translatorRepoImpl: MyTranslatorRepoImpl) {
                 }
                 println("complete extracted zip =${extractedFiles.size}")
 
-                val oldList = state.value.selectedLanguagesList.map { it.langCode }
+                val oldList = state.value.selectedLanguages.map { it.langCode }
                 val selectedLanguages: List<LanguageModel> = extractedFiles.mapNotNull { entry ->
                     val code = extractLanguageCode(entry.key)
                     println("Lang code= $code")
-                    val found = availableLanguagesList.firstOrNull {
+                    val found = availableLanguages().firstOrNull {
                         (it.langCode == code || it.langCode == "en") && !oldList.contains(code)
                     }
                     if (found == null) {
@@ -86,12 +128,12 @@ class HomeScreenViewModel(val translatorRepoImpl: MyTranslatorRepoImpl) {
                 println("selectedLanguages size= ${selectedLanguages.size}, actual= $selectedLanguages")
 
 
-                val stateLanguages = state.value.selectedLanguagesList.toMutableList()
+                val stateLanguages = state.value.selectedLanguages.toMutableList()
                 stateLanguages.addAll(selectedLanguages)
                 _state.update {
-                    it.copy(selectedLanguagesList = stateLanguages)
+                    it.copy(selectedLanguages = stateLanguages)
                 }
-                println("current state size= ${state.value.selectedLanguagesList.size}, actual= ${state.value.selectedLanguagesList}")
+                println("current state size= ${state.value.selectedLanguages.size}, actual= ${state.value.selectedLanguages}")
 
             } else {
                 _state.update {
@@ -104,10 +146,11 @@ class HomeScreenViewModel(val translatorRepoImpl: MyTranslatorRepoImpl) {
     fun translate() {
         translationJob = CoroutineScope(Dispatchers.IO).launch {
             try {
-               val stateLangs= state.value.selectedLanguagesList.map { it.langCode }
+                val stateLangs = state.value.selectedLanguages.map { it.langCode }
                 val downloadsPath = System.getProperty("user.home") + "/Downloads"
                 val currentTime = SimpleDateFormat("dd_MMM", Locale.getDefault()).format(Date())
-                val newFolderPath = "$downloadsPath/translation_${currentTime}_${System.currentTimeMillis()}"
+                val newFolderPath =
+                    "$downloadsPath/translation_${currentTime}_${System.currentTimeMillis()}"
                 val tempDir = File(newFolderPath)
                 if (!tempDir.exists()) {
                     tempDir.mkdirs() // Create the folder if it doesn't exist
@@ -116,19 +159,20 @@ class HomeScreenViewModel(val translatorRepoImpl: MyTranslatorRepoImpl) {
                 val filesXmlContent = FilesHelper.getFilesXmlContents(extractedFiles)
 
 
-                val fileXmlDataMutableMap = filesXmlContent.filter { (key, _)->
+                val fileXmlDataMutableMap = filesXmlContent.filter { (key, _) ->
                     val langCode = extractLanguageCode(key)
                     langCode == "en" || stateLangs.contains(langCode)
                 }.toMutableMap()
                 println("fileXmlDataMutableMap= ${fileXmlDataMutableMap.keys}")
-                val basePairs = fileXmlDataMutableMap["values/strings.xml"]?.keyValuePairs ?: emptyMap()
+                val basePairs =
+                    fileXmlDataMutableMap["values/strings.xml"]?.keyValuePairs ?: emptyMap()
 //                println("basePairs = ${filesXmlContent["values/strings.xml"]}")
                 println("filesXmlContent languages = ${fileXmlDataMutableMap.keys.size}, ${fileXmlDataMutableMap.keys}")
 
 
                 val existingLanguages = fileXmlDataMutableMap.keys.mapNotNull { key ->
                     val code = extractLanguageCode(key)
-                    if (code == "en"||stateLangs.contains(code).not())
+                    if (code == "en" || stateLangs.contains(code).not())
                         null
                     else
                         code
@@ -136,17 +180,24 @@ class HomeScreenViewModel(val translatorRepoImpl: MyTranslatorRepoImpl) {
 
                 println("filesXmlContent existingLanguages = ${existingLanguages.size} $existingLanguages")
 
-                val missingLanguages = state.value.selectedLanguagesList.map { it.langCode }.toSet() - existingLanguages
+                val missingLanguages = state.value.selectedLanguages.map { it.langCode }
+                    .toSet() - existingLanguages
                 println("filesXmlContent missingLanguages = ${missingLanguages.size} $missingLanguages")
 
                 println("Languages to translate = ${missingLanguages} + ${fileXmlDataMutableMap.keys}")
-                println("Total Languages to translate = ${state.value.selectedLanguagesList.size}")
+                println("Total Languages to translate = ${state.value.selectedLanguages.size}")
 
-                val totalFilesToTranslate = state.value.selectedLanguagesList.size
+                val totalFilesToTranslate = state.value.selectedLanguages.size
 
                 fileXmlDataMutableMap.onEachIndexed { index, entry ->
-                     if (entry.key != "values/strings.xml") {
-                        processFile(Pair(entry.key, entry.value), index , totalFilesToTranslate, basePairs, tempDir)
+                    if (entry.key != "values/strings.xml") {
+                        processFile(
+                            Pair(entry.key, entry.value),
+                            index,
+                            totalFilesToTranslate,
+                            basePairs,
+                            tempDir
+                        )
                     }
                 }
 
@@ -156,7 +207,7 @@ class HomeScreenViewModel(val translatorRepoImpl: MyTranslatorRepoImpl) {
 //                    shouldParallelTasking = false
                     processFile(
                         Pair("values-$language/strings.xml", newFile),
-                        (fileXmlDataMutableMap.size-1) + index,
+                        (fileXmlDataMutableMap.size - 1) + index,
                         totalFilesToTranslate,
                         basePairs,
                         tempDir
@@ -208,7 +259,8 @@ class HomeScreenViewModel(val translatorRepoImpl: MyTranslatorRepoImpl) {
         val splittedResults = mutableListOf<List<String>>()
 
         chunks.forEach { chunk ->
-            val result = translatorRepoImpl.getTranslation(query = chunk, toLanguage = file.languageCode)
+            val result =
+                translatorRepoImpl.getTranslation(query = chunk, toLanguage = file.languageCode)
 
             if (result is NetworkResponse.Success) {
                 splittedResults.add(result.data?.split(separator) ?: listOf())
@@ -230,7 +282,10 @@ class HomeScreenViewModel(val translatorRepoImpl: MyTranslatorRepoImpl) {
             if (state.value.parallelTranslation) {
                 val jobs: List<Deferred<Pair<String, String>>> = missingKeys.map { (key, value) ->
                     async {
-                        val result = translatorRepoImpl.getTranslation(query = value, toLanguage = file.languageCode)
+                        val result = translatorRepoImpl.getTranslation(
+                            query = value,
+                            toLanguage = file.languageCode
+                        )
                         if (result is NetworkResponse.Success) {
                             val translations = result.data?.replace("'", "\'") ?: value
                             key to translations
@@ -242,7 +297,10 @@ class HomeScreenViewModel(val translatorRepoImpl: MyTranslatorRepoImpl) {
                 translatedPairs = jobs.awaitAll().toMap()
             } else {
                 translatedPairs = missingKeys.map { (key, value) ->
-                    val result = translatorRepoImpl.getTranslation(query = value, toLanguage = file.languageCode)
+                    val result = translatorRepoImpl.getTranslation(
+                        query = value,
+                        toLanguage = file.languageCode
+                    )
                     if (result is NetworkResponse.Success) {
                         val translations = result.data ?: value
                         key to translations
@@ -272,5 +330,17 @@ class HomeScreenViewModel(val translatorRepoImpl: MyTranslatorRepoImpl) {
         }
     }
 
+    fun searchLanguage(text: String) {
+        val availableList = state.value.availableLanguages
+        val filteredList = availableList.filter {
+            it.langName.contains(text, true) || it.langCode.contains(text, true)
+        }
+        _state.update {
+            it.copy(
+                searchedText = text,
+                filteredList = if (text.isEmpty()) availableList else filteredList
+            )
+        }
+    }
 
 }
