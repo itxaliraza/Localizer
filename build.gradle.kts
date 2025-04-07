@@ -1,8 +1,7 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
-
 plugins {
     kotlin("jvm")
-    id("org.jetbrains.compose")
+    id("org.jetbrains.compose") version "1.8.0-beta01"
     id("org.jetbrains.kotlin.plugin.compose")
     kotlin("plugin.serialization") version "2.0.0"
 
@@ -25,7 +24,10 @@ dependencies {
     implementation(compose.desktop.currentOs)
 
     implementation("io.ktor:ktor-client-cio:2.3.12")
-
+    implementation(compose.components.resources)
+    implementation(compose.material3)
+    implementation(compose.ui)
+    implementation(compose.material)
 
     implementation("org.slf4j:slf4j-api:2.0.9") // SLF4J API
     implementation("ch.qos.logback:logback-classic:1.4.11")
@@ -48,11 +50,18 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Exe)
-            packageName = "Localizer"
+            packageName = "Fast Localizer"
             packageVersion = "2.0.0"
             windows {
                 perUserInstall = true  // Ensures the app is installed per user, not system-wide
+                shortcut = true
+                menuGroup = "Fast Localizer"
             }
         }
     }
+}
+
+compose.resources {
+    publicResClass = true
+    generateResClass = always
 }

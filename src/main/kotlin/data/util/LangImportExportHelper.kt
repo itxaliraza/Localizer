@@ -4,9 +4,10 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 
-fun exportLanguageCodesToJson(filePath: String, languageCodes: List<String>) {
+fun exportLanguageCodesToJson(languageCodes: List<String>,filePath: String="") {
+    val path=filePath.ifBlank { System.getProperty("user.home") + "/Downloads/languages_${System.currentTimeMillis()}.txt" }
     val json = Json.encodeToString(languageCodes)
-    File(filePath).writeText(json)
+    File(path).writeText(json)
 }
 
 fun importLanguageCodesFromJson(filePath: String): List<String> {
