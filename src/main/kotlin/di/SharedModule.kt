@@ -5,6 +5,7 @@ import data.translator.apis.TranslatorApi1Impl
 import data.translator.apis.TranslatorApi2Impl
 import data.translator.apis.TranslatorApi3Impl
 import home_screen.HomeScreenViewModel
+import home_screen.TranslationManager
 import org.koin.dsl.module
 
 val SharedModule = module{
@@ -13,6 +14,9 @@ val SharedModule = module{
     }
     factory {
         MyTranslatorRepoImpl(get(),get(),get())
+    }
+    factory {
+        TranslationManager(get())
     }
     factory {
         TranslatorApi1Impl()

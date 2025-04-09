@@ -65,7 +65,7 @@ fun EditText(
         value = value,
         modifier = modifier.fillMaxWidth(),
         textStyle = TextStyle(color = Color.White),
-        placeholder = { Text(text = hint, color = Color.White) },
+        placeholder = { Text(text = hint, color = Color.Gray) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
         shape = RoundedCornerShape(radius.dp),
         colors = OutlinedTextFieldDefaults.colors(

@@ -72,6 +72,26 @@ class TranslatorApi1Impl :TranslatorApis{
     }
 }
 
-fun String.escapeApos(): String {
-    return this.replace("'","\\'")
+
+
+fun String.escapeXml(): String {
+    val replacements = mapOf(
+        "&" to "&amp;",
+        "'" to "&apos;",
+        "\"" to "&quot;",
+        "<" to "&lt;",
+        ">" to "&gt;",
+        "\n" to "&#10;",
+        "\r" to "&#13;",
+        "\t" to "&#9;",
+
+        )
+
+    var escapedString = this
+
+    replacements.forEach { (key, value) ->
+        escapedString = escapedString.replace(key, value)
+    }
+
+    return escapedString
 }

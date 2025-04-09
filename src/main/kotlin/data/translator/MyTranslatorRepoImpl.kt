@@ -1,10 +1,7 @@
 package data.translator
 
 import data.network.NetworkResponse
-import data.translator.apis.TranslatorApi1Impl
-import data.translator.apis.TranslatorApi2Impl
-import data.translator.apis.TranslatorApi3Impl
-import data.translator.apis.escapeApos
+import data.translator.apis.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -53,7 +50,7 @@ class MyTranslatorRepoImpl(
             if (translationResult is NetworkResponse.Success) {
                 lastCalledIndex += 1
                 return@withContext NetworkResponse.Success(
-                    translationResult.data?.escapeApos() ?: ""
+                    translationResult.data?.escapeXml() ?: ""
                 )
             }
             println("Trying translation api $index error ${translationResult.error}")
