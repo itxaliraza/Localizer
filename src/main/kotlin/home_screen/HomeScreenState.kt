@@ -13,5 +13,6 @@ data class HomeScreenState(
     val parallelTranslation: Boolean = true,
     val searchedText: String = "",
     val folderPath: String = "",
+    val loadedPath: String = "",
 
 )

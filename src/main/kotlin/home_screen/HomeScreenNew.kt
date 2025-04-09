@@ -57,16 +57,13 @@ import java.io.File
 @Composable
 fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
     val state by viewModel.state.collectAsState()
-    var selectedFile by remember { mutableStateOf<String?>(null) }
-    var showSnackBar by remember { mutableStateOf(false) }
+     var showSnackBar by remember { mutableStateOf(false) }
     var canTranslateFile by remember { mutableStateOf(false) }
-    LaunchedEffect(selectedFile, state.selectedLanguages, state.translationResult,state.folderPath) {
-        canTranslateFile = state.selectedLanguages.isNotEmpty() && (selectedFile != null|| state.folderPath.isNotBlank())
+    LaunchedEffect(state.loadedPath, state.selectedLanguages, state.translationResult) {
+        canTranslateFile = state.selectedLanguages.isNotEmpty() && ( state.loadedPath.isNotBlank())
                 && (state.translationResult as? TranslationResult.TranslationFailed)?.exc?.message != "Not valid file"
     }
-    LaunchedEffect(selectedFile) {
-        viewModel.fileSelected(path = selectedFile)
-    }
+
     Column(modifier = Modifier.fillMaxSize()) {
         Row(modifier = Modifier.fillMaxSize()) {
             LanguagesScreen(
@@ -76,7 +73,6 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
             Column(modifier = Modifier.fillMaxSize().weight(0.8f).padding(10.dp)) {
 
                 VerticalSpacer()
-
                 RectangleWithShadow(
                     bgColor = PrimaryColor,
                     modifier = Modifier.wrapContentHeight(), onClick = {
@@ -129,21 +125,22 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
                         horizontalArrangement = Arrangement.Center,
                     ) {
                         Text(
-                            text = selectedFile ?: "No File Selected",
+                            text = state.loadedPath.ifBlank {    "No File Selected"},
                             color = Color.Gray,
                             fontSize = 13.sp,
                             modifier = Modifier.basicMarquee()
                         )
-                        selectedFile?.let {
+                        if (state.loadedPath.isNotBlank()){
                             HorizontalSpacer()
                             ImageButtons(
                                 tint = Color.Gray, size = 25,
                                 icon = Res.drawable.ic_close, color = Color.Red,
                                 onClick = {
-                                    selectedFile = null
-                                }
+                                    viewModel.clearLoadedFile()
+                                 }
                             )
                         }
+
                     }
                 }
                 RectangleWithShadow(
@@ -274,7 +271,7 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
                                     modifier = Modifier.fillMaxWidth().padding(5.dp),
                                     bgColor = ScreenColor,
                                     clickEnable = true,
-                                    onClick = { openDownloadsFolder() }
+                                    onClick = { openDownloadsFolder(state.folderPath) }
                                 ) {
                                     Text(
                                         text = "Translation Completed, Open Now",

@@ -3,10 +3,9 @@ package data.util
 import java.awt.Desktop
 import java.io.File
 
-fun openDownloadsFolder() {
+fun openDownloadsFolder(downloadsPath:String) {
        try {
-           val downloadsPath = System.getProperty("user.home") + "/Downloads"
-           val downloadsFolder = File(downloadsPath)
+            val downloadsFolder = File(downloadsPath)
            if (downloadsFolder.exists() && Desktop.isDesktopSupported()) {
                Desktop.getDesktop().open(downloadsFolder)
            }

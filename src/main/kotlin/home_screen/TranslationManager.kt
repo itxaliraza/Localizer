@@ -16,12 +16,14 @@ import java.io.File
 class TranslationManager(private val translatorRepoImpl: MyTranslatorRepoImpl) {
     private val separator = "\u2023\u2023\u2023\u2023"
 
-     var parallelTranslation = true
+     var mParallelTranslation = true
     fun translate(
         selectedLanguages: List<LanguageModel>,
         extractedFiles: Map<String, String>,
-        outputDir: File
+        outputDir: File,
+        parallelTranslation:Boolean
     ): Flow<TranslationResult> = flow {
+        mParallelTranslation=parallelTranslation
              try {
 
                 val filesXmlContent: Map<String, FileXmlData> = FilesHelper.getFilesXmlContents(extractedFiles)
@@ -96,7 +98,7 @@ class TranslationManager(private val translatorRepoImpl: MyTranslatorRepoImpl) {
             translatedPairs = missingKeys.keys.zip(flatSplittedResults).toMap()
         } else {
 
-            if (parallelTranslation) {
+            if (mParallelTranslation) {
                 val jobs: List<Deferred<Pair<String, String>>> = missingKeys.map { (key, value) ->
                     async {
                         val result = translatorRepoImpl.getTranslation(

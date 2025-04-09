@@ -10,6 +10,10 @@ import java.io.FileInputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 
+data class ExtractionResult(
+    val selectedLangs: List<LanguageModel>,
+    var extractedFiles: Map<String, String> = mapOf()
+)
 
 object FolderExtractor {
 
@@ -35,10 +39,8 @@ object FolderExtractor {
         println("extracted"+extractedFiles.keys)
         val  selectedLanguages = extractedFiles.mapNotNull { entry ->
             val code = extractLanguageCode(entry.key)
-            println("Lang code= $code")
-            val found = availableLanguages().firstOrNull {
-                println("Lang code= $code ${it.langCode}")
-                (it.langCode == code )
+             val found = availableLanguages().firstOrNull {
+                 (it.langCode == code )
             }
             if (found == null) {
                 println("Not found Lang code= $code")
