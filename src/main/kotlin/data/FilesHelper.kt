@@ -1,5 +1,8 @@
 package data
 
+import data.util.ExtractionResult
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.w3c.dom.Element
 import java.io.ByteArrayInputStream
 import java.io.File
@@ -45,6 +48,8 @@ object FilesHelper {
             return "zh-CN"
         } else if (code == "zh-rTW") {
             return "zh-TW"
+        } else if (code == "id") {
+            return "in"
         }
         return code
     }
@@ -103,55 +108,7 @@ object FilesHelper {
         }
     }
 
-    fun addNewEntriesToXml(xmlContent: String, newEntries: Map<String, String>): String {
-        try {
-            val doc = DocumentBuilderFactory.newInstance()
-                .newDocumentBuilder()
-                .parse(ByteArrayInputStream(xmlContent.toByteArray()))
-            val root = doc.documentElement
-
-            if (root.tagName != "resources") {
-                throw IllegalArgumentException("Not valid XML")
-            }
-
-            // Normalize the document to avoid redundant spaces
-            doc.normalizeDocument()
-
-            // Collect existing keys to prevent duplicates
-            val existingStrings = root.getElementsByTagName("string")
-            val existingKeys = mutableSetOf<String>()
-            for (i in 0 until existingStrings.length) {
-                val node = existingStrings.item(i)
-                if (node is Element) {
-                    existingKeys.add(node.getAttribute("name"))
-                }
-            }
-
-            // Add new entries only if they don't already exist
-            for ((key, value) in newEntries) {
-                if (!existingKeys.contains(key)) {
-                    val newString = doc.createElement("string")
-                    newString.setAttribute("name", key)
-                    newString.textContent = value
-                    root.appendChild(newString)
-                }
-            }
-
-            val transformer = TransformerFactory.newInstance().newTransformer()
-            transformer.setOutputProperty(OutputKeys.INDENT, "yes")
-            transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "0")
-            transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes")
-            doc.normalizeDocument()
-
-            val result = StreamResult(StringWriter())
-            transformer.transform(DOMSource(doc), result)
-            return result.writer.toString()
-
-        } catch (e: Exception) {
-            throw IllegalArgumentException("Error occurred: ${e.message}")
-        }
-    }
-    fun addNewEntriesToXmlNew(newEntries: Map<String, String>): String {
+     fun addNewEntriesToXmlNew(newEntries: Map<String, String>): String {
         try {
             val docFactory = DocumentBuilderFactory.newInstance()
 
