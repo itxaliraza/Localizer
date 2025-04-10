@@ -151,6 +151,7 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
                         modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp)
                     ) {
                         RoundedCard(
+                            clickEnable = state.folderPath.isNotBlank(),
                             modifier = Modifier.weight(1f),
                             bgColor = ScreenColor,
                             onClick = {

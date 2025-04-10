@@ -1117,8 +1117,8 @@ fun availableLanguages(): ArrayList<LanguageModel> {
             LanguageModel(
                 "Portuguese (Brazil)",
                 "Português ",
-                "pt-BR",
-                "pt-BR",
+                "pt",
+                "pt",
                 "",
                 true,
 

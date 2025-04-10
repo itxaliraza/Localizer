@@ -93,5 +93,5 @@ fun String.escapeXml(): String {
         escapedString = escapedString.replace(key, value)
     }
 
-    return escapedString
+    return escapedString.replace("&amp;amp;","&amp;")
 }

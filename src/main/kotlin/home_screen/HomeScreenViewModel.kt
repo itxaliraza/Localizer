@@ -2,6 +2,7 @@ package home_screen
 
 import data.availableLanguages
 import data.model.TranslationResult
+import data.translator.TranslationManager
 import data.util.ExtractionResult
 import data.util.FolderExtractor
 import domain.model.LanguageModel

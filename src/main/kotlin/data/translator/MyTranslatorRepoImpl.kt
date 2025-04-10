@@ -34,7 +34,7 @@ class MyTranslatorRepoImpl(
         toLanguage: String,
         query: String,
     ): NetworkResponse<String> = withContext(Dispatchers.IO) {
-        val translationApis = listOf(translatorApi2Impl, translatorApi3Impl, translatorApi1Impl)
+        val translationApis = listOf(translatorApi3Impl, translatorApi3Impl, translatorApi1Impl)
         val totalApis = translationApis.size
         val lastIndex = lastCalledIndex
         for (index in 0 until totalApis) {

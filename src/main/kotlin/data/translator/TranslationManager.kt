@@ -1,10 +1,9 @@
-package home_screen
+package data.translator
 
 import data.FileXmlData
 import data.FilesHelper
 import data.model.TranslationResult
 import data.network.NetworkResponse
-import data.translator.MyTranslatorRepoImpl
 import domain.model.LanguageModel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
@@ -16,7 +15,7 @@ import java.io.File
 class TranslationManager(private val translatorRepoImpl: MyTranslatorRepoImpl) {
     private val separator = "\u2023\u2023\u2023\u2023"
 
-     var mParallelTranslation = true
+     private var mParallelTranslation = true
     fun translate(
         selectedLanguages: List<LanguageModel>,
         extractedFiles: Map<String, String>,
@@ -38,34 +37,31 @@ class TranslationManager(private val translatorRepoImpl: MyTranslatorRepoImpl) {
 
                 val totalFilesToTranslate = selectedLanguages.size
                 selectedLanguages.forEachIndexed { index, lang ->
-                    emit(
-                        TranslationResult.UpdateProgress(
-                            ((index.toFloat() / selectedLanguages.size) * 100).toInt(),
-                            lang.langCode
+                    if(lang.langCode!="en") {
+                        emit(
+                            TranslationResult.UpdateProgress(
+                                ((index.toFloat() / selectedLanguages.size) * 100).toInt(),
+                                lang.langCode
+                            )
                         )
-                    )
-                    processTranslation(
-                        transformedLangCodeMap[lang.langCode] ?: FileXmlData(
-                            "<resources></resources>",
-                            emptyMap(),
-                            lang.langCode
-                        ),
-                        index,
-                        totalFilesToTranslate,
-                        basePairs,
-                        outputDir,
-                     )
+                        processTranslation(
+                            transformedLangCodeMap[lang.langCode] ?: FileXmlData(
+                                "<resources></resources>",
+                                emptyMap(),
+                                lang.langCode
+                            ),
+                            index,
+                            totalFilesToTranslate,
+                            basePairs,
+                            outputDir,
+                        )
+                    }
                 }
 
 
                 emit(TranslationResult.TranslationCompleted)
 
                 println("pathString path = ${outputDir.path}")
-//                val zipFilePath = "$downloadsPath/translation_comp.zip"
-//                FilesHelper.makeZipFile(
-//                    zipFilePath = zipFilePath,
-//                    tempDir = outputDir.path
-//                )
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -106,7 +102,7 @@ class TranslationManager(private val translatorRepoImpl: MyTranslatorRepoImpl) {
                             toLanguage = file.languageCode
                         )
                         if (result is NetworkResponse.Success) {
-                            val translations = result.data?.replace("'", "\'") ?: value
+                            val translations = result.data?: value
                             key to translations
                         } else {
                             throw Exception(result.error)
