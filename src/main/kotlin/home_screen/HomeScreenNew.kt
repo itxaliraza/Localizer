@@ -51,7 +51,6 @@ import theme.PrimaryColor
 import theme.ScreenColor
 import java.awt.FileDialog
 import java.awt.Frame
-//This screen is added for UI changes
 @Composable
 fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
     val state by viewModel.state.collectAsState()
