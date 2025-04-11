@@ -15,7 +15,9 @@ repositories {
     maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
     google()
 }
-
+kotlin {
+    jvmToolchain(22)
+}
 dependencies {
     // Note, if you develop a library, you should use compose.desktop.common.
     // compose.desktop.currentOs should be used in launcher-sourceSet

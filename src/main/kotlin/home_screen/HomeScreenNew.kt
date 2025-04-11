@@ -1,5 +1,6 @@
 package home_screen
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
@@ -39,8 +40,6 @@ import theme.ScreenColor
 import java.awt.FileDialog
 import java.awt.Frame
 
-//This screen is added for UI changes
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
     val state by viewModel.state.collectAsState()
@@ -98,7 +97,7 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
                         modifier = Modifier.fillMaxWidth().padding(vertical = 11.dp)
                     ) {
                         Text(
-                            text = "Enter Values folder path",
+                            text = "Enter path of Values folder",
                             color = Color.White,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
@@ -110,30 +109,28 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
                         ) {
                             viewModel.updateFolderPath(it)
                         }
-
-                        RoundedCard(
-                            modifier = Modifier.fillMaxWidth().padding(5.dp),
-                            bgColor = ScreenColor,
-                            clickEnable = state.folderPath.isNotBlank(),
-                            onClick = {
-
-                                viewModel.loadFileFromPath(state.folderPath)
-
+                        AnimatedVisibility(visible = state.folderPath.isNotEmpty()) {
+                            RoundedCard(
+                                modifier = Modifier.fillMaxWidth().padding(5.dp),
+                                bgColor = ScreenColor,
+                                onClick = {
+                                    viewModel.loadFileFromPath(state.folderPath)
+                                }
+                            ) {
+                                Text(
+                                    text = "Load File",
+                                    color = Color.White,
+                                    fontSize = 13.sp,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 5.dp)
+                                )
                             }
-                        ) {
-                            Text(
-                                text = "Load",
-                                color = Color.White,
-                                fontSize = 13.sp,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 5.dp)
-                            )
                         }
                     }
                 }
 
                 RectangleWithShadow(
-                    bgColor = PrimaryColor,
+                    bgColor = PrimaryColor, enableBlink = state.loadedPath.isNotBlank(),
                     modifier = Modifier.fillMaxWidth().wrapContentHeight().padding(top = 10.dp)
                 ) {
                     Row(
@@ -142,7 +139,7 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
                     ) {
                         Text(
                             text = state.loadedPath.ifBlank { "No File Selected" },
-                            color = Color.White,
+                            color = Color.Gray,
                             fontSize = 13.sp,
                             modifier = Modifier.basicMarquee()
                         )
@@ -211,7 +208,8 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
                                         color = Color.White,
                                         fontSize = 13.sp,
                                         textAlign = TextAlign.Center,
-                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 5.dp)
+                                        modifier = Modifier.fillMaxWidth()
+                                            .padding(horizontal = 5.dp)
                                     )
                                 }
 
@@ -296,7 +294,9 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
                                     fontSize = 13.sp,
                                     textAlign = TextAlign.Center,
                                     modifier = Modifier.fillMaxWidth().padding(10.dp).clickable {
-                                        viewModel.translate()
+                                        if (canTranslateFile) {
+                                            viewModel.translate()
+                                        }
                                     }
                                 )
                             }
@@ -309,7 +309,8 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
                                     val progress = result.progress
                                     LinearProgressIndicator(
                                         progress = progress / 100f,
-                                        modifier = Modifier.fillMaxWidth().height(60.dp).padding(10.dp),
+                                        modifier = Modifier.fillMaxWidth().height(60.dp)
+                                            .padding(10.dp),
                                         backgroundColor = LightPrimary,
                                         strokeCap = StrokeCap.Round,
                                         color = GreenColor
@@ -379,7 +380,10 @@ fun JsonGuideDialog(
             backgroundColor = PrimaryColor,
             onDismissRequest = onDismiss,
             confirmButton = {
-                TextButton(onClick = onDismiss, colors = ButtonDefaults.buttonColors(Color(0xff03b6fc))) {
+                TextButton(
+                    onClick = onDismiss,
+                    colors = ButtonDefaults.buttonColors(Color(0xff03b6fc))
+                ) {
                     Text("OK")
                 }
             },
