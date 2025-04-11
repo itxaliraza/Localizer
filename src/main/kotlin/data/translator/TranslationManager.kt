@@ -16,6 +16,7 @@ class TranslationManager(private val translatorRepoImpl: MyTranslatorRepoImpl) {
     private val separator = "\u2023\u2023\u2023\u2023"
 
      private var mParallelTranslation = true
+    private var areBothChineseSelected=false
     fun translate(
         selectedLanguages: List<LanguageModel>,
         extractedFiles: Map<String, String>,
@@ -25,12 +26,16 @@ class TranslationManager(private val translatorRepoImpl: MyTranslatorRepoImpl) {
         mParallelTranslation=parallelTranslation
              try {
 
+                 val selectedLanguagesKeys=selectedLanguages.map { it.langCode }
                 val filesXmlContent: Map<String, FileXmlData> = FilesHelper.getFilesXmlContents(extractedFiles)
 
                 val transformedLangCodeMap: Map<String, FileXmlData> = filesXmlContent.map {
                     it.value.languageCode to it.value
                 }.toMap()
 
+                  if (selectedLanguagesKeys.contains("zh-CN")&&selectedLanguagesKeys.contains("zh-TW")){
+                     areBothChineseSelected=true
+                 }
                 val basePairs =
                     transformedLangCodeMap["en"]?.keyValuePairs ?: emptyMap()
 
@@ -129,9 +134,20 @@ class TranslationManager(private val translatorRepoImpl: MyTranslatorRepoImpl) {
 
 
         val finalContent = FilesHelper.addNewEntriesToXmlNew(currentPairs + translatedPairs)
+        var modifiedCode=file.languageCode
+        println("are both = $areBothChineseSelected    file code ${file.languageCode}")
+        if (file.languageCode=="zh-CN"||file.languageCode=="zh-TW"){
+            if (areBothChineseSelected){
+                modifiedCode=modifiedCode.replace("-","-r")
+            }else{
+                modifiedCode="zh"
+            }
+        }
+
+
         FilesHelper.writeXmlToFile(
             finalContent,
-            "${tempDir.path}/values-${file.languageCode}/strings.xml"
+            "${tempDir.path}/values-${modifiedCode}/strings.xml"
         )
 
 

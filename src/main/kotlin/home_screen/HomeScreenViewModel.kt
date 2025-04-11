@@ -9,16 +9,18 @@ import domain.model.LanguageModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.io.File
 
 class HomeScreenViewModel(private val translationManager: TranslationManager) {
     private val _state = MutableStateFlow(HomeScreenState())
     val state = _state.asStateFlow()
+
+    private val _oneTimeUiEvents:Channel<HomeScreenOneTimeEvents> = Channel()
+    val oneTimeUiEvents = _oneTimeUiEvents.receiveAsFlow()
+
     private var extractionResult: ExtractionResult? = null
     private var translationJob: Job? = null
 
@@ -65,6 +67,7 @@ class HomeScreenViewModel(private val translationManager: TranslationManager) {
                 _state.update {
                     it.copy(translationResult = TranslationResult.TranslationFailed(Exception("Not valid file")), loadedPath = "")
                 }
+                _oneTimeUiEvents.send(HomeScreenOneTimeEvents.FileLoadedFail)
             } else {
                 println(extractionResult!!.selectedLangs)
                 val existingLangs = state.value.selectedLanguages.toMutableList()
@@ -72,6 +75,8 @@ class HomeScreenViewModel(private val translationManager: TranslationManager) {
                 _state.update {
                     it.copy(selectedLanguages = existingLangs.toMutableSet(), loadedPath = path)
                 }
+                _oneTimeUiEvents.send(HomeScreenOneTimeEvents.FileLoadedSuccess)
+
             }
         }
     }
