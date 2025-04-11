@@ -1,7 +1,6 @@
 package home_screen
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -13,7 +12,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.material.*
+import androidx.compose.material.LinearProgressIndicator
+import androidx.compose.material.Snackbar
+import androidx.compose.material.Switch
+import androidx.compose.material.SwitchDefaults
+import androidx.compose.material.Text
+import androidx.compose.material.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -25,7 +29,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.semantics.Role.Companion.Switch
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -50,17 +53,14 @@ import theme.PrimaryColor
 import theme.ScreenColor
 import java.awt.FileDialog
 import java.awt.Frame
-import java.io.File
 
-//This screen is added for UI changes
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
     val state by viewModel.state.collectAsState()
-     var showSnackBar by remember { mutableStateOf(false) }
+    var showSnackBar by remember { mutableStateOf(false) }
     var canTranslateFile by remember { mutableStateOf(false) }
     LaunchedEffect(state.loadedPath, state.selectedLanguages, state.translationResult) {
-        canTranslateFile = state.selectedLanguages.isNotEmpty() && ( state.loadedPath.isNotBlank())
+        canTranslateFile = state.selectedLanguages.isNotEmpty() && (state.loadedPath.isNotBlank())
                 && (state.translationResult as? TranslationResult.TranslationFailed)?.exc?.message != "Not valid file"
     }
 
@@ -71,7 +71,6 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
                 state, viewModel
             )
             Column(modifier = Modifier.fillMaxSize().weight(0.8f).padding(10.dp)) {
-
                 VerticalSpacer()
                 RectangleWithShadow(
                     bgColor = PrimaryColor,
@@ -83,41 +82,40 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
                         modifier = Modifier.fillMaxWidth().padding(vertical = 11.dp)
                     ) {
                         Text(
-                            text = "Enter Values folder path",
+                            text = "Enter path of Values folder",
                             color = Color.White,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                         )
                         EditText(
-                            hint = "E:\\projects\\Downloader\\Translator\\app\\src\\main\\res",
+                            hint = "E:\\projects\\Translator\\app\\src\\main\\res",
                             value = state.folderPath,
                             modifier = Modifier.padding(7.dp)
                         ) {
                             viewModel.updateFolderPath(it)
                         }
-
-                        RoundedCard(
-                            modifier = Modifier.fillMaxWidth().padding(5.dp),
-                            bgColor = ScreenColor,
-                             onClick = {
-
-                                 viewModel.loadFileFromPath(state.folderPath)
-
+                        AnimatedVisibility(visible = state.folderPath.isNotEmpty()){
+                            RoundedCard(
+                                modifier = Modifier.fillMaxWidth().padding(5.dp),
+                                bgColor = ScreenColor,
+                                onClick = {
+                                    viewModel.loadFileFromPath(state.folderPath)
+                                }
+                            ) {
+                                Text(
+                                    text = "Load File",
+                                    color = Color.White,
+                                    fontSize = 13.sp,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 5.dp)
+                                )
                             }
-                        ) {
-                            Text(
-                                text ="Load",
-                                color = Color.White,
-                                fontSize = 13.sp,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 5.dp)
-                            )
                         }
                     }
                 }
 
                 RectangleWithShadow(
-                    bgColor = PrimaryColor,
+                    bgColor = PrimaryColor, enableBlink = state.loadedPath.isNotBlank(),
                     modifier = Modifier.fillMaxWidth().wrapContentHeight().padding(top = 10.dp)
                 ) {
                     Row(
@@ -125,19 +123,19 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
                         horizontalArrangement = Arrangement.Center,
                     ) {
                         Text(
-                            text = state.loadedPath.ifBlank {    "No File Selected"},
+                            text = state.loadedPath.ifBlank { "No File Selected" },
                             color = Color.Gray,
                             fontSize = 13.sp,
                             modifier = Modifier.basicMarquee()
                         )
-                        if (state.loadedPath.isNotBlank()){
+                        if (state.loadedPath.isNotBlank()) {
                             HorizontalSpacer()
                             ImageButtons(
                                 tint = Color.Gray, size = 25,
                                 icon = Res.drawable.ic_close, color = Color.Red,
                                 onClick = {
                                     viewModel.clearLoadedFile()
-                                 }
+                                }
                             )
                         }
 
@@ -258,7 +256,6 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
                                     colors = SwitchDefaults.colors(
                                         PrimaryColor,
                                         Color.Gray,
-//                                        uncheckedBorderColor = Color.Transparent
                                     ),
                                     onCheckedChange = {
                                         viewModel.toggleParallel(it)
@@ -284,16 +281,21 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
                                     )
                                 }
                             }
+
                             is TranslationResult.TranslationFailed -> {
                                 Text(
                                     text = "${result.exc.message}, Try again",
                                     color = Color.White,
                                     fontSize = 13.sp,
                                     textAlign = TextAlign.Center,
-                                    modifier = Modifier.fillMaxWidth().padding(10.dp).clickable { viewModel.translate()
+                                    modifier = Modifier.fillMaxWidth().padding(10.dp).clickable {
+                                        if (canTranslateFile) {
+                                            viewModel.translate()
+                                        }
                                     }
                                 )
                             }
+
                             is TranslationResult.UpdateProgress -> {
                                 Box(
                                     contentAlignment = Alignment.Center,
@@ -301,8 +303,9 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
                                 ) {
                                     val progress = result.progress
                                     LinearProgressIndicator(
-                                        progress = progress/100f,
-                                        modifier = Modifier.fillMaxWidth().height(60.dp).padding(10.dp),
+                                        progress = progress / 100f,
+                                        modifier = Modifier.fillMaxWidth().height(60.dp)
+                                            .padding(10.dp),
                                         backgroundColor = LightPrimary,
                                         strokeCap = StrokeCap.Round,
                                         color = GreenColor

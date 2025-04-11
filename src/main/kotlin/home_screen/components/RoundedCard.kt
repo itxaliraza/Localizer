@@ -1,5 +1,6 @@
 package home_screen.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,6 +23,7 @@ fun RoundedCard(
     modifier: Modifier = Modifier,
     elevation: Int = 2,
     radius: Int = 7,
+    strokeWidth: Int = 0,
     bgColor: Color = ScreenColor,
     height: Int = 40,
     clickEnable: Boolean = true,
@@ -29,6 +31,7 @@ fun RoundedCard(
     content: @Composable () -> Unit
 ) {
     Card(
+        border = if (strokeWidth > 0) BorderStroke(strokeWidth.dp, Color.Green) else null,
         enabled = clickEnable,
         elevation = elevation.dp,
         shape = RoundedCornerShape(radius.dp),
@@ -36,7 +39,7 @@ fun RoundedCard(
         onClick = { onClick() },
         modifier = modifier.fillMaxWidth()
             .alpha(if (clickEnable) 1f else 0.5f)
-            .padding(5.dp).height(height.dp)
+            .padding(5.dp).height(height.dp),
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),

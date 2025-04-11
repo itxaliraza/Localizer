@@ -69,7 +69,7 @@ fun LanguagesScreen(
             scrollState.scrollToItem(0)
         }
     }
-    Column(modifier =modifier) {
+    Column(modifier = modifier) {
         RectangleWithShadow(
             bgColor = PrimaryColor,
             modifier = Modifier.fillMaxWidth().wrapContentHeight()
@@ -157,12 +157,12 @@ private fun LanguagesItems(
     onClick: (LanguageModel) -> Unit
 ) {
     RoundedCard(
-        bgColor = bgColor,
+        bgColor = bgColor, strokeWidth = if (isSelected || selectAll) 1 else 0,
         onClick = { onClick(model) },
         modifier = modifier
     ) {
         Row(
-            modifier = Modifier.fillMaxSize().padding(5.dp),
+            modifier = Modifier.fillMaxSize().padding(vertical = 5.dp, horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Image(
@@ -190,15 +190,20 @@ fun ColumnScope.LazyVerticalGridWithScrollIndicator(
     viewModel: HomeScreenViewModel
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val density = LocalDensity.current
 
     var scrollbarY by remember { mutableStateOf(0f) }
     var isDragging by remember { mutableStateOf(false) }
 
     Row(modifier = Modifier.fillMaxSize().weight(1f)) {
+
+        // GRID CONTENT
         LazyVerticalGrid(
             columns = GridCells.Adaptive(145.dp),
             state = scrollState,
-            modifier = Modifier.fillMaxSize().weight(1f)
+            modifier = Modifier
+                .fillMaxSize()
+                .weight(1f)
         ) {
             items(state.filteredList, key = { it.langCode }) {
                 LanguagesItems(
@@ -211,29 +216,35 @@ fun ColumnScope.LazyVerticalGridWithScrollIndicator(
             }
         }
 
-        val totalItems = scrollState.layoutInfo.totalItemsCount
-        val visibleItems = scrollState.layoutInfo.visibleItemsInfo.size
-        val firstVisibleIndex = scrollState.firstVisibleItemIndex
-        val viewportHeight = scrollState.layoutInfo.viewportSize.height.toFloat()
+        // SCROLLBAR LOGIC
+        val layoutInfo = scrollState.layoutInfo
+        val visibleItemsInfo = layoutInfo.visibleItemsInfo
+        val totalItemsCount = layoutInfo.totalItemsCount
+        val viewportHeight = layoutInfo.viewportSize.height.toFloat()
 
-        val density = LocalDensity.current
-        val scrollbarHeight = with(density) { 52.dp.toPx() }
-        val trackHeight = viewportHeight - scrollbarHeight // Scrollable track height
-        if (visibleItems > 0) {
-            // 🛠 Get the last visible item's bottom offset to determine true maxScrollIndex
-            val lastItem = scrollState.layoutInfo.visibleItemsInfo.lastOrNull()
-            val lastItemOffset = lastItem?.offset?.y ?: 0
-            val lastItemHeight = lastItem?.size?.height ?: 1 // Avoid division by zero
+        if (visibleItemsInfo.isNotEmpty() && totalItemsCount > 0) {
+            val firstItem = visibleItemsInfo.first()
+            val averageItemHeight =
+                visibleItemsInfo.map { it.size.height }.average().toFloat().coerceAtLeast(1f)
 
-            // 🛠 Compute how many more full scrolls are needed
-            val maxScrollIndex = (totalItems - visibleItems) + (lastItemOffset / lastItemHeight)
+            val totalContentHeight = totalItemsCount * averageItemHeight
+            val scrollOffset =
+                (firstItem.index * averageItemHeight - firstItem.offset.y).coerceAtLeast(0f)
+            val maxScrollOffset = (totalContentHeight - viewportHeight).coerceAtLeast(1f)
 
-            // 🛠 Ensure smooth scrolling calculation
-            val scrollProgress = firstVisibleIndex.toFloat() / maxScrollIndex.toFloat()
-            scrollbarY = (scrollProgress * trackHeight).coerceIn(0f, trackHeight)
+            // Calculate scroll progress
+            val scrollProgress = (scrollOffset / maxScrollOffset).coerceIn(0f, 1f)
 
+            // Dynamic scrollbar height
+            val proportionVisible = viewportHeight / totalContentHeight
+            val scrollbarHeight = (viewportHeight * proportionVisible).coerceIn(50f, viewportHeight)
 
-            // 📌 Scroll Track
+            val trackHeight = viewportHeight - scrollbarHeight
+            scrollbarY = if (!isDragging) {
+                (scrollProgress * trackHeight).coerceIn(0f, trackHeight)
+            } else scrollbarY
+
+            // SCROLL TRACK
             Box(
                 modifier = Modifier
                     .padding(end = 4.dp)
@@ -241,11 +252,11 @@ fun ColumnScope.LazyVerticalGridWithScrollIndicator(
                     .fillMaxHeight()
                     .background(Color.Gray.copy(alpha = 0.3f), RoundedCornerShape(4.dp))
             ) {
-                // 📌 Draggable Scrollbar
+                // SCROLL THUMB
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(60.dp)
+                        .height(with(density) { scrollbarHeight.toDp() })
                         .offset { IntOffset(0, scrollbarY.toInt()) }
                         .background(Color.DarkGray, RoundedCornerShape(4.dp))
                         .pointerInput(Unit) {
@@ -257,10 +268,13 @@ fun ColumnScope.LazyVerticalGridWithScrollIndicator(
                                     scrollbarY = (scrollbarY + dragAmount.y)
                                         .coerceIn(0f, trackHeight)
 
-                                    val newScrollIndex =
-                                        ((scrollbarY / trackHeight) * maxScrollIndex).toInt()
+                                    val newScrollProgress = scrollbarY / trackHeight
+                                    val targetScrollOffset = newScrollProgress * maxScrollOffset
+                                    val targetIndex =
+                                        (targetScrollOffset / averageItemHeight).toInt()
+
                                     coroutineScope.launch {
-                                        scrollState.scrollToItem(newScrollIndex)
+                                        scrollState.scrollToItem(targetIndex)
                                     }
                                 }
                             )
@@ -270,6 +284,9 @@ fun ColumnScope.LazyVerticalGridWithScrollIndicator(
         }
     }
 }
+
+
+
 
 
 

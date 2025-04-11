@@ -57,7 +57,7 @@ fun main() = application {
         undecorated = true,
         icon = painterResource(Res.drawable.app_icon),
     ) {
-        window.minimumSize = Dimension(800, 600)
+        window.minimumSize = Dimension(850, 600)
         App(window) {
             exitApplication()
         }
