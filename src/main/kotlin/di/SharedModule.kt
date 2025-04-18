@@ -21,6 +21,7 @@ val SharedModule = module{
     factory {
         TranslatorApi1Impl()
     }
+
     factory {
         TranslatorApi2Impl()
     }

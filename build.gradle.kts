@@ -15,9 +15,9 @@ repositories {
     maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
     google()
 }
-kotlin {
-    jvmToolchain(22)
-}
+//kotlin {
+//    jvmToolchain(22)
+//}
 dependencies {
     // Note, if you develop a library, you should use compose.desktop.common.
     // compose.desktop.currentOs should be used in launcher-sourceSet
@@ -53,7 +53,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Exe)
             packageName = "Fast Localizer"
-            packageVersion = "3.0.0"
+            packageVersion = "5.0.0"
             windows {
                 perUserInstall = true  // Ensures the app is installed per user, not system-wide
                 shortcut = true

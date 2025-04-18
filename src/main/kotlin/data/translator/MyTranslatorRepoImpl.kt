@@ -42,6 +42,7 @@ class MyTranslatorRepoImpl(
                 (lastIndex + index) % totalApis // Circular iterati             ensureActive()
             val translatorApi = translationApis[currentIndex]
 
+            println("query = $query")
             val translationResult = translatorApi.getTranslation(
                 fromLanguage = fromLanguage,
                 toLanguage = toLanguage,
@@ -49,6 +50,7 @@ class MyTranslatorRepoImpl(
             )
             if (translationResult is NetworkResponse.Success) {
                 lastCalledIndex += 1
+                println("result before ${translationResult.data}")
                 return@withContext NetworkResponse.Success(
                     translationResult.data?.escapeXml() ?: ""
                 )

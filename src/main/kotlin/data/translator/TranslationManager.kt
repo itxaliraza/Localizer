@@ -15,63 +15,63 @@ import java.io.File
 class TranslationManager(private val translatorRepoImpl: MyTranslatorRepoImpl) {
     private val separator = "\u2023\u2023\u2023\u2023"
 
-     private var mParallelTranslation = true
-    private var areBothChineseSelected=false
+    private var mParallelTranslation = true
+    private var areBothChineseSelected = false
     fun translate(
         selectedLanguages: List<LanguageModel>,
         extractedFiles: Map<String, String>,
         outputDir: File,
-        parallelTranslation:Boolean
+        parallelTranslation: Boolean
     ): Flow<TranslationResult> = flow {
-        mParallelTranslation=parallelTranslation
-             try {
+        mParallelTranslation = parallelTranslation
+        try {
 
-                 val selectedLanguagesKeys=selectedLanguages.map { it.langCode }
-                val filesXmlContent: Map<String, FileXmlData> = FilesHelper.getFilesXmlContents(extractedFiles)
+            val selectedLanguagesKeys = selectedLanguages.map { it.langCode }
+            val filesXmlContent: Map<String, FileXmlData> = FilesHelper.getFilesXmlContents(extractedFiles)
 
-                val transformedLangCodeMap: Map<String, FileXmlData> = filesXmlContent.map {
-                    it.value.languageCode to it.value
-                }.toMap()
+            val transformedLangCodeMap: Map<String, FileXmlData> = filesXmlContent.map {
+                it.value.languageCode to it.value
+            }.toMap()
 
-                  if (selectedLanguagesKeys.contains("zh-CN")&&selectedLanguagesKeys.contains("zh-TW")){
-                     areBothChineseSelected=true
-                 }
-                val basePairs =
-                    transformedLangCodeMap["en"]?.keyValuePairs ?: emptyMap()
-
-
-                val totalFilesToTranslate = selectedLanguages.size
-                selectedLanguages.forEachIndexed { index, lang ->
-                    if(lang.langCode!="en") {
-                        emit(
-                            TranslationResult.UpdateProgress(
-                                ((index.toFloat() / selectedLanguages.size) * 100).toInt(),
-                                lang.langCode
-                            )
-                        )
-                        processTranslation(
-                            transformedLangCodeMap[lang.langCode] ?: FileXmlData(
-                                "<resources></resources>",
-                                emptyMap(),
-                                lang.langCode
-                            ),
-                            index,
-                            totalFilesToTranslate,
-                            basePairs,
-                            outputDir,
-                        )
-                    }
-                }
-
-
-                emit(TranslationResult.TranslationCompleted)
-
-                println("pathString path = ${outputDir.path}")
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                emit(TranslationResult.TranslationFailed(e))
+            if (selectedLanguagesKeys.contains("zh-CN") && selectedLanguagesKeys.contains("zh-TW")) {
+                areBothChineseSelected = true
             }
+            val basePairs =
+                transformedLangCodeMap["en"]?.keyValuePairs ?: emptyMap()
+
+
+            val totalFilesToTranslate = selectedLanguages.size
+            selectedLanguages.forEachIndexed { index, lang ->
+                if (lang.langCode != "en") {
+                    emit(
+                        TranslationResult.UpdateProgress(
+                            ((index.toFloat() / selectedLanguages.size) * 100).toInt(),
+                            lang.langCode
+                        )
+                    )
+                    processTranslation(
+                        transformedLangCodeMap[lang.langCode] ?: FileXmlData(
+                            "<resources></resources>",
+                            emptyMap(),
+                            lang.langCode
+                        ),
+                        index,
+                        totalFilesToTranslate,
+                        basePairs,
+                        outputDir,
+                    )
+                }
+            }
+
+
+            emit(TranslationResult.TranslationCompleted)
+
+            println("pathString path = ${outputDir.path}")
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emit(TranslationResult.TranslationFailed(e))
+        }
 
     }.flowOn(Dispatchers.IO)
 
@@ -82,7 +82,7 @@ class TranslationManager(private val translatorRepoImpl: MyTranslatorRepoImpl) {
         totalSize: Int,
         basePairs: Map<String, String>,
         tempDir: File,
-     ) = withContext(Dispatchers.IO) {
+    ) = withContext(Dispatchers.IO) {
 
 
         println("Progress  index= $index, actual = ${((index.toFloat() / totalSize) * 100).toInt()} ")
@@ -90,33 +90,12 @@ class TranslationManager(private val translatorRepoImpl: MyTranslatorRepoImpl) {
         val missingKeys = basePairs.filterKeys { it !in currentPairs }
 
 
-        val splittedResults = translateMissingUsingSeparator(file, missingKeys)
-        val flatSplittedResults = splittedResults.flatten()
-
         val translatedPairs: Map<String, String>
 
-        if (missingKeys.size == flatSplittedResults.size) {
-            translatedPairs = missingKeys.keys.zip(flatSplittedResults).toMap()
-        } else {
 
-            if (mParallelTranslation) {
-                val jobs: List<Deferred<Pair<String, String>>> = missingKeys.map { (key, value) ->
-                    async {
-                        val result = translatorRepoImpl.getTranslation(
-                            query = value,
-                            toLanguage = file.languageCode
-                        )
-                        if (result is NetworkResponse.Success) {
-                            val translations = result.data?: value
-                            key to translations
-                        } else {
-                            throw Exception(result.error)
-                        }
-                    }
-                }
-                translatedPairs = jobs.awaitAll().toMap()
-            } else {
-                translatedPairs = missingKeys.map { (key, value) ->
+        if (mParallelTranslation) {
+            val jobs: List<Deferred<Pair<String, String>>> = missingKeys.map { (key, value) ->
+                async {
                     val result = translatorRepoImpl.getTranslation(
                         query = value,
                         toLanguage = file.languageCode
@@ -127,20 +106,33 @@ class TranslationManager(private val translatorRepoImpl: MyTranslatorRepoImpl) {
                     } else {
                         throw Exception(result.error)
                     }
-                }.toMap()
+                }
             }
-
+            translatedPairs = jobs.awaitAll().toMap()
+        } else {
+            translatedPairs = missingKeys.map { (key, value) ->
+                val result = translatorRepoImpl.getTranslation(
+                    query = value,
+                    toLanguage = file.languageCode
+                )
+                if (result is NetworkResponse.Success) {
+                    val translations = result.data ?: value
+                    key to translations
+                } else {
+                    throw Exception(result.error)
+                }
+            }.toMap()
         }
 
 
         val finalContent = FilesHelper.addNewEntriesToXmlNew(currentPairs + translatedPairs)
-        var modifiedCode=file.languageCode
+        var modifiedCode = file.languageCode
         println("are both = $areBothChineseSelected    file code ${file.languageCode}")
-        if (file.languageCode=="zh-CN"||file.languageCode=="zh-TW"){
-            if (areBothChineseSelected){
-                modifiedCode=modifiedCode.replace("-","-r")
-            }else{
-                modifiedCode="zh"
+        if (file.languageCode == "zh-CN" || file.languageCode == "zh-TW") {
+            if (areBothChineseSelected) {
+                modifiedCode = modifiedCode.replace("-", "-r")
+            } else {
+                modifiedCode = "zh"
             }
         }
 
@@ -153,24 +145,4 @@ class TranslationManager(private val translatorRepoImpl: MyTranslatorRepoImpl) {
 
     }
 
-    private suspend fun translateMissingUsingSeparator(
-        file: FileXmlData,
-        missingKeys: Map<String, String>
-    ): MutableList<List<String>> {
-        println("Translating ${file.languageCode}")
-        val chunks = FilesHelper.combineStringsWithLimit(missingKeys.values.toList(), separator)
-        val splittedResults = mutableListOf<List<String>>()
-
-        chunks.forEach { chunk ->
-            val result =
-                translatorRepoImpl.getTranslation(query = chunk, toLanguage = file.languageCode)
-
-            if (result is NetworkResponse.Success) {
-                splittedResults.add(result.data?.split(separator) ?: listOf())
-            } else {
-                throw Exception(result.error)
-            }
-        }
-        return splittedResults
-    }
 }

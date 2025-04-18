@@ -31,6 +31,7 @@ import home_screen.components.RectangleWithShadow
 import home_screen.components.RoundedCard
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import languages_screen.LanguagesScreen
 import org.koin.compose.koinInject
 import theme.GreenColor
@@ -42,6 +43,7 @@ import java.awt.Frame
 
 @Composable
 fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
+    val scope= rememberCoroutineScope()
     val state by viewModel.state.collectAsState()
     var showSnackBar by remember { mutableStateOf(false) }
     var showImportGuideDialog by remember { mutableStateOf(false) }
@@ -109,28 +111,26 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
                         ) {
                             viewModel.updateFolderPath(it)
                         }
-                        AnimatedVisibility(visible = state.folderPath.isNotEmpty()) {
-                            RoundedCard(
-                                modifier = Modifier.fillMaxWidth().padding(5.dp),
-                                bgColor = ScreenColor,
-                                onClick = {
-                                    viewModel.loadFileFromPath(state.folderPath)
-                                }
-                            ) {
-                                Text(
-                                    text = "Load File",
-                                    color = Color.White,
-                                    fontSize = 13.sp,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 5.dp)
-                                )
+                        RoundedCard(
+                            modifier = Modifier.fillMaxWidth().padding(5.dp),
+                            bgColor = ScreenColor,
+                            onClick = {
+                                viewModel.loadFileFromPath(state.folderPath)
                             }
+                        ) {
+                            Text(
+                                text = "Load File",
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 5.dp)
+                            )
                         }
                     }
                 }
 
                 RectangleWithShadow(
-                    bgColor = PrimaryColor, enableBlink = state.loadedPath.isNotBlank(),
+                    bgColor = PrimaryColor, enableBlink = false,
                     modifier = Modifier.fillMaxWidth().wrapContentHeight().padding(top = 10.dp)
                 ) {
                     Row(
@@ -139,7 +139,7 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
                     ) {
                         Text(
                             text = state.loadedPath.ifBlank { "No File Selected" },
-                            color = Color.Gray,
+                            color = Color.White,
                             fontSize = 13.sp,
                             modifier = Modifier.basicMarquee()
                         )
@@ -186,16 +186,25 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
                                     fileDialog.isVisible = true
                                     val file = fileDialog.file
                                     if (file != null) {
-                                        val path = fileDialog.directory + file
-                                        println("Selected Lang file = $path")
-                                        val languageCodes = importLanguageCodesFromJson(path)
-                                        println("Selected Lang file languageCodes= $languageCodes")
-                                        state.availableLanguages.forEach {
-                                            if (languageCodes.contains(it.langCode) && !state.selectedLanguages.contains(
-                                                    it
-                                                )
-                                            ) {
-                                                viewModel.updateSelectedLanguages(it)
+                                        try {
+                                            val path = fileDialog.directory + file
+                                            println("Selected Lang file = $path")
+                                            val languageCodes = importLanguageCodesFromJson(path)
+                                            println("Selected Lang file languageCodes= $languageCodes")
+                                            state.availableLanguages.forEach {
+                                                if (languageCodes.contains(it.langCode) && !state.selectedLanguages.contains(
+                                                        it
+                                                    )
+                                                ) {
+                                                    viewModel.updateSelectedLanguages(it)
+                                                }
+                                            }
+                                        } catch (e: Exception) {
+                                            scope.launch {
+                                                fileLoadingStatus ="Invalid json file"
+                                                showFileLoadedSnackBar = true
+                                                delay(2000)
+                                                showFileLoadedSnackBar = false
                                             }
                                         }
                                     }
