@@ -1,28 +1,19 @@
 package data
 
-import data.util.ExtractionResult
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.w3c.dom.Element
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.StringWriter
 import java.nio.file.Files
-import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.zip.ZipEntry
-import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.transform.OutputKeys
 import javax.xml.transform.TransformerFactory
 import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamResult
-import kotlin.io.path.createTempDirectory
-import kotlin.io.path.exists
-import kotlin.io.path.name
-import kotlin.io.path.writeText
 
 
 object FilesHelper {
@@ -34,29 +25,31 @@ object FilesHelper {
             FileXmlData(
                 contents = content,
                 keyValuePairs = currentPairs,
-                languageCode = extractLanguageCode(fileName)
+                languageCode = extractLanguageCode(fileName).second
             )
         }
     }
 
-    fun extractLanguageCode(fileName: String): String {
+    fun extractLanguageCode(fileName: String): Pair<String, String> {
         val regex = Regex("""values-([\w-]+)/""")
-        val code = regex.find(fileName)?.groups?.get(1)?.value ?: "en"
-        if (code == "zh-rCN") {
-            return "zh-CN"
-        } else if (code == "zh") {
-            return "zh-CN"
-        } else if (code == "zh-rTW") {
-            return "zh-TW"
-        } else if (code == "id") {
-            return "in"
+        val rawCode = regex.find(fileName)?.groups?.get(1)?.value ?: return "en" to "en"
+
+        val standardizedCode = when (rawCode) {
+            "zh", "zh-rCN" -> "zh-CN"
+            "zh-rTW" -> "zh-TW"
+            "in" -> "id"
+            "he" -> "iw"
+            "ji" -> "yi"
+            else -> rawCode
         }
-        return code
+
+        return rawCode to standardizedCode
     }
+
 
     fun parseXml(xmlContent: String): Map<String, String> {
         val keyValuePairs = mutableMapOf<String, String>()
-        val root = javax.xml.parsers.DocumentBuilderFactory.newInstance()
+        val root = DocumentBuilderFactory.newInstance()
             .newDocumentBuilder()
             .parse(ByteArrayInputStream(xmlContent.toByteArray()))
             .documentElement
@@ -67,15 +60,19 @@ object FilesHelper {
             val key = stringElement.getAttribute("name")
             val value = stringElement.textContent
             val translatable: String = stringElement.getAttribute("translatable")
-//            println("key = $key, value = $value, transl= $translatable")
             if (key != null && value != null && translatable != "false") {
                 keyValuePairs[key] = value
+
             }
         }
         return keyValuePairs
     }
 
-    fun combineStringsWithLimit(strings: List<String>, separator: String, limit: Int = 3600): List<String> {
+    fun combineStringsWithLimit(
+        strings: List<String>,
+        separator: String,
+        limit: Int = 3600
+    ): List<String> {
         val combinedStrings = mutableListOf<String>()
         var currentChunk = StringBuilder()
 
@@ -108,7 +105,7 @@ object FilesHelper {
         }
     }
 
-     fun addNewEntriesToXmlNew(newEntries: Map<String, String>): String {
+    fun addNewEntriesToXmlNew(newEntries: Map<String, String>): String {
         try {
             val docFactory = DocumentBuilderFactory.newInstance()
 
@@ -128,7 +125,7 @@ object FilesHelper {
             val transformer = TransformerFactory.newInstance().newTransformer()
             transformer.setOutputProperty(OutputKeys.INDENT, "yes")
 
-             val result = StreamResult(StringWriter())
+            val result = StreamResult(StringWriter())
             transformer.transform(DOMSource(doc), result)
             return result.writer.toString()
 

@@ -5,37 +5,37 @@ import data.FilesHelper
 import data.model.TranslationResult
 import data.network.NetworkResponse
 import domain.model.LanguageModel
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.withContext
 import java.io.File
 
 
 class TranslationManager(private val translatorRepoImpl: MyTranslatorRepoImpl) {
-    private val separator = "\u2023\u2023\u2023\u2023"
-
     private var mParallelTranslation = true
-    private var areBothChineseSelected = false
+    private var mChangeFileCodes = mapOf<String, String>()
     fun translate(
         selectedLanguages: List<LanguageModel>,
         extractedFiles: Map<String, String>,
+        changeFileCodes: Map<String, String>,
         outputDir: File,
         parallelTranslation: Boolean
     ): Flow<TranslationResult> = flow {
         mParallelTranslation = parallelTranslation
+        mChangeFileCodes = changeFileCodes
         try {
-
-            val selectedLanguagesKeys = selectedLanguages.map { it.langCode }
-            val filesXmlContent: Map<String, FileXmlData> = FilesHelper.getFilesXmlContents(extractedFiles)
+            val filesXmlContent: Map<String, FileXmlData> =
+                FilesHelper.getFilesXmlContents(extractedFiles)
 
             val transformedLangCodeMap: Map<String, FileXmlData> = filesXmlContent.map {
                 it.value.languageCode to it.value
             }.toMap()
-
-            if (selectedLanguagesKeys.contains("zh-CN") && selectedLanguagesKeys.contains("zh-TW")) {
-                areBothChineseSelected = true
-            }
             val basePairs =
                 transformedLangCodeMap["en"]?.keyValuePairs ?: emptyMap()
 
@@ -50,6 +50,7 @@ class TranslationManager(private val translatorRepoImpl: MyTranslatorRepoImpl) {
                         )
                     )
                     processTranslation(
+                        lang,
                         transformedLangCodeMap[lang.langCode] ?: FileXmlData(
                             "<resources></resources>",
                             emptyMap(),
@@ -77,6 +78,7 @@ class TranslationManager(private val translatorRepoImpl: MyTranslatorRepoImpl) {
 
 
     private suspend fun processTranslation(
+        lang: LanguageModel,
         file: FileXmlData,
         index: Int,
         totalSize: Int,
@@ -91,51 +93,22 @@ class TranslationManager(private val translatorRepoImpl: MyTranslatorRepoImpl) {
 
 
         val translatedPairs: Map<String, String>
-
-
         if (mParallelTranslation) {
             val jobs: List<Deferred<Pair<String, String>>> = missingKeys.map { (key, value) ->
                 async {
-                    val result = translatorRepoImpl.getTranslation(
-                        query = value,
-                        toLanguage = file.languageCode
-                    )
-                    if (result is NetworkResponse.Success) {
-                        val translations = result.data ?: value
-                        key to translations
-                    } else {
-                        throw Exception(result.error)
-                    }
+                    getTranslation(lang, value, key)
                 }
             }
             translatedPairs = jobs.awaitAll().toMap()
         } else {
             translatedPairs = missingKeys.map { (key, value) ->
-                val result = translatorRepoImpl.getTranslation(
-                    query = value,
-                    toLanguage = file.languageCode
-                )
-                if (result is NetworkResponse.Success) {
-                    val translations = result.data ?: value
-                    key to translations
-                } else {
-                    throw Exception(result.error)
-                }
+                getTranslation(lang, value, key)
             }.toMap()
         }
 
 
         val finalContent = FilesHelper.addNewEntriesToXmlNew(currentPairs + translatedPairs)
-        var modifiedCode = file.languageCode
-        println("are both = $areBothChineseSelected    file code ${file.languageCode}")
-        if (file.languageCode == "zh-CN" || file.languageCode == "zh-TW") {
-            if (areBothChineseSelected) {
-                modifiedCode = modifiedCode.replace("-", "-r")
-            } else {
-                modifiedCode = "zh"
-            }
-        }
-
+        val modifiedCode = mChangeFileCodes[file.languageCode] ?: file.languageCode
 
         FilesHelper.writeXmlToFile(
             finalContent,
@@ -143,6 +116,21 @@ class TranslationManager(private val translatorRepoImpl: MyTranslatorRepoImpl) {
         )
 
 
+    }
+
+    private suspend fun getTranslation(
+        lang: LanguageModel, value: String, key: String
+    ): Pair<String, String> {
+        val result = translatorRepoImpl.getTranslation(
+            query = value,
+            toLanguage = lang
+        )
+        return if (result is NetworkResponse.Success) {
+            val translations = result.data ?: value
+            key to translations
+        } else {
+            throw Exception(result.error)
+        }
     }
 
 }

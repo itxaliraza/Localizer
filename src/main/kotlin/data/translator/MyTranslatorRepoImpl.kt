@@ -1,7 +1,12 @@
 package data.translator
 
 import data.network.NetworkResponse
-import data.translator.apis.*
+import data.translator.apis.TranslatorApi1Impl
+import data.translator.apis.TranslatorApi2Impl
+import data.translator.apis.TranslatorApi3Impl
+import data.util.LocalizationUtils.restoreAfterTranslation
+import data.util.LocalizationUtils.sanitizeForTranslation
+import domain.model.LanguageModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -15,7 +20,7 @@ class MyTranslatorRepoImpl(
 
     suspend fun getTranslation(
         fromLanguage: String = "en",
-        toLanguage: String,
+        toLanguage: LanguageModel,
         query: String
     ): NetworkResponse<String> = withContext(Dispatchers.IO) {
         val result = getTranslationResultOrFailure(
@@ -31,10 +36,14 @@ class MyTranslatorRepoImpl(
 
     private suspend fun getTranslationResultOrFailure(
         fromLanguage: String,
-        toLanguage: String,
+        toLanguage: LanguageModel,
         query: String,
     ): NetworkResponse<String> = withContext(Dispatchers.IO) {
-        val translationApis = listOf(translatorApi2Impl, translatorApi3Impl, translatorApi1Impl)
+        val translationApis = if (toLanguage.onlyWebTranslate) {
+            listOf(translatorApi1Impl)
+        } else {
+            listOf(translatorApi2Impl, translatorApi3Impl, translatorApi1Impl)
+        }
         val totalApis = translationApis.size
         val lastIndex = lastCalledIndex
         for (index in 0 until totalApis) {
@@ -42,17 +51,27 @@ class MyTranslatorRepoImpl(
                 (lastIndex + index) % totalApis // Circular iterati             ensureActive()
             val translatorApi = translationApis[currentIndex]
 
-            println("query = $query")
+
             val translationResult = translatorApi.getTranslation(
                 fromLanguage = fromLanguage,
-                toLanguage = toLanguage,
-                query = query
+                toLanguage = toLanguage.langCode,
+                query = sanitizeForTranslation(query)
             )
             if (translationResult is NetworkResponse.Success) {
                 lastCalledIndex += 1
-                println("result before ${translationResult.data}")
+//                if (query.contains("&") || query.contains("'") || query.contains("\'")) {
+                if (query.contains("\"")) {
+                    println("result query = $query")
+                    println("result query sanitize ${sanitizeForTranslation(query)}")
+                    println("result simple response ${toLanguage.langCode} ${translationResult.data}")
+                    println(
+                        "result after restore ${
+                            restoreAfterTranslation(translationResult.data ?: "")
+                        }"
+                    )
+                }
                 return@withContext NetworkResponse.Success(
-                    translationResult.data?.escapeXml() ?: ""
+                    restoreAfterTranslation(translationResult.data ?: "")
                 )
             }
             println("Trying translation api $index error ${translationResult.error}")

@@ -54,15 +54,15 @@ class TranslatorApi1Impl :TranslatorApis{
     }
 
 
-    private fun getTranslationData(to_translate: String): String {
+    private fun getTranslationData(toTranslate: String): String {
 //    println("api 1 getTranslationData $to_translate")
             var nativeText = "class=\"t0\">"
             val result =
-                to_translate.substring(to_translate.indexOf(nativeText) + nativeText.length)
+                toTranslate.substring(toTranslate.indexOf(nativeText) + nativeText.length)
                     .split("<".toRegex()).toTypedArray()[0]
             return if (result == "html>") {
                 nativeText = "class=\"result-container\">"
-                to_translate.substring(to_translate.indexOf(nativeText) + nativeText.length)
+                toTranslate.substring(toTranslate.indexOf(nativeText) + nativeText.length)
                     .split("<".toRegex()).toTypedArray()[0] + ""
             } else {
                 throw Exception("Api error")
@@ -73,22 +73,3 @@ class TranslatorApi1Impl :TranslatorApis{
 }
 
 
-
-fun String.escapeXml(): String {
-    val replacements = mapOf(
-        "'" to "&apos;",
-        "\"" to "&quot;",
-        "<" to "&lt;",
-        ">" to "&gt;",
-
-        )
-
-    var escapedString = this
-
-    replacements.forEach { (key, value) ->
-        escapedString = escapedString.replace(key, value)
-    }
-
-
-    return escapedString.replace("\\ n","\\n")
-}
