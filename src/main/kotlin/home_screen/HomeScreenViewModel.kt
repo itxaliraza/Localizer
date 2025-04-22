@@ -27,8 +27,8 @@ class HomeScreenViewModel(private val translationManager: TranslationManager) {
     init {
         _state.update {
             it.copy(
-                availableLanguages = availableLanguages(),
-                filteredList = availableLanguages()
+                availableLanguages = availableLanguages,
+                filteredList = availableLanguages
             )
         }
     }
@@ -96,6 +96,7 @@ class HomeScreenViewModel(private val translationManager: TranslationManager) {
                 translationManager.translate(
                     state.value.selectedLanguages.toList(),
                     extractionResult!!.extractedFiles,
+                    extractionResult!!.changeFileCodes,
                     File(state.value.loadedPath.trim()),
                     state.value.parallelTranslation
                 ).collectLatest { result ->
