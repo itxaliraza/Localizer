@@ -54,9 +54,6 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
         canTranslateFile = state.selectedLanguages.isNotEmpty() && (state.loadedPath.isNotBlank())
                 && (state.translationResult as? TranslationResult.TranslationFailed)?.exc?.message != "Not valid file"
     }
-
-
-
     LaunchedEffect(Unit) {
         viewModel.oneTimeUiEvents.collectLatest {
             when (it) {
