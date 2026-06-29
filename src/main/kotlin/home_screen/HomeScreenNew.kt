@@ -3,9 +3,9 @@ package home_screen
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.example.localizer.generated.resources.Res
 import com.example.localizer.generated.resources.ic_close
 import common_components.EditText
@@ -24,11 +25,10 @@ import common_components.HorizontalSpacer
 import common_components.ImageButtons
 import common_components.VerticalSpacer
 import data.model.TranslationResult
-import data.util.exportLanguageCodesToJson
-import data.util.importLanguageCodesFromJson
 import data.util.openDownloadsFolder
 import home_screen.components.RectangleWithShadow
 import home_screen.components.RoundedCard
+import home_screen.components.TemplatesCard
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -38,22 +38,20 @@ import theme.GreenColor
 import theme.LightPrimary
 import theme.PrimaryColor
 import theme.ScreenColor
-import java.awt.FileDialog
-import java.awt.Frame
 
 @Composable
 fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
     val scope= rememberCoroutineScope()
     val state by viewModel.state.collectAsState()
-    var showSnackBar by remember { mutableStateOf(false) }
-    var showImportGuideDialog by remember { mutableStateOf(false) }
+    var viewingModule by remember { mutableStateOf<ModuleSelection?>(null) }
 
     var showFileLoadedSnackBar by remember { mutableStateOf(false) }
     var fileLoadingStatus by remember { mutableStateOf("") }
 
     var canTranslateFile by remember { mutableStateOf(false) }
-    LaunchedEffect(state.loadedPath, state.selectedLanguages, state.translationResult) {
+    LaunchedEffect(state.loadedPath, state.selectedLanguages, state.translationResult, state.modules) {
         canTranslateFile = state.selectedLanguages.isNotEmpty() && (state.loadedPath.isNotBlank())
+                && (state.modules.isEmpty() || state.modules.any { it.selected })
                 && (state.translationResult as? TranslationResult.TranslationFailed)?.exc?.message != "Not valid file"
     }
 
@@ -86,7 +84,10 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
                 modifier = Modifier.fillMaxSize().padding(10.dp).weight(1f),
                 state, viewModel
             )
-            Column(modifier = Modifier.fillMaxSize().weight(0.8f).padding(10.dp)) {
+            Column(
+                modifier = Modifier.fillMaxSize().weight(0.8f).padding(10.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
 
                 VerticalSpacer()
                 RectangleWithShadow(
@@ -99,13 +100,13 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
                         modifier = Modifier.fillMaxWidth().padding(vertical = 11.dp)
                     ) {
                         Text(
-                            text = "Enter path of Values folder",
+                            text = "Enter res folder or project root",
                             color = Color.White,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                         )
                         EditText(
-                            hint = "E:\\Translator\\app\\src\\main\\res",
+                            hint = "D:\\AndroidProjects\\my-app  (or ...\\app\\src\\main\\res)",
                             value = state.folderPath,
                             modifier = Modifier.padding(7.dp)
                         ) {
@@ -136,13 +137,24 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(10.dp),
                         horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            text = state.loadedPath.ifBlank { "No File Selected" },
-                            color = Color.White,
-                            fontSize = 13.sp,
-                            modifier = Modifier.basicMarquee()
-                        )
+                        Column(modifier = Modifier.weight(1f, fill = false)) {
+                            Text(
+                                text = state.loadedPath.ifBlank { "No File Selected" },
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                modifier = Modifier.basicMarquee()
+                            )
+                            if (state.modules.isNotEmpty()) {
+                                Text(
+                                    text = "${state.modules.count { it.selected }}/${state.modules.size} module(s) selected",
+                                    color = Color(0xff03b6fc),
+                                    fontSize = 11.sp,
+                                    modifier = Modifier.basicMarquee()
+                                )
+                            }
+                        }
                         if (state.loadedPath.isNotBlank()) {
                             HorizontalSpacer()
                             ImageButtons(
@@ -156,95 +168,27 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
 
                     }
                 }
-                RectangleWithShadow(
-                    bgColor = PrimaryColor,
-                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
-                        verticalAlignment = Alignment.Bottom
-                    ) {
-                        Column(
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            ImageButtons(
-                                icon = Icons.Default.Info,
-                                size = 26,
-                                onClick = {
-                                    showImportGuideDialog = true
-                                }
-                            )
-                            RoundedCard(
-                                clickEnable = state.folderPath.isNotBlank(),
-                                bgColor = ScreenColor,
-                                onClick = {
-                                    val fileDialog = FileDialog(
-                                        Frame(),
-                                        "Select Languages Json",
-                                        FileDialog.LOAD
-                                    )
-                                    fileDialog.isVisible = true
-                                    val file = fileDialog.file
-                                    if (file != null) {
-                                        try {
-                                            val path = fileDialog.directory + file
-                                            println("Selected Lang file = $path")
-                                            val languageCodes = importLanguageCodesFromJson(path)
-                                            println("Selected Lang file languageCodes= $languageCodes")
-                                            state.availableLanguages.forEach {
-                                                if (languageCodes.contains(it.langCode) && !state.selectedLanguages.contains(
-                                                        it
-                                                    )
-                                                ) {
-                                                    viewModel.updateSelectedLanguages(it)
-                                                }
-                                            }
-                                        } catch (e: Exception) {
-                                            scope.launch {
-                                                fileLoadingStatus ="Invalid json file"
-                                                showFileLoadedSnackBar = true
-                                                delay(2000)
-                                                showFileLoadedSnackBar = false
-                                            }
-                                        }
-                                    }
-                                }
-                            ) {
-                                Column {
 
-                                    Text(
-                                        text = "Import Languages",
-                                        color = Color.White,
-                                        fontSize = 13.sp,
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier.fillMaxWidth()
-                                            .padding(horizontal = 5.dp)
-                                    )
-                                }
-
-                            }
-                        }
-                        RoundedCard(
-                            modifier = Modifier.weight(1f),
-                            bgColor = ScreenColor,
-                            clickEnable = state.selectedLanguages.isNotEmpty(),
-                            onClick = {
-                                val codesList =
-                                    state.selectedLanguages.toList().map { it.langCode }
-                                exportLanguageCodesToJson(codesList)
-                                showSnackBar = true
-                            }
-                        ) {
-                            Text(
-                                text = "Export Languages",
-                                color = Color.White,
-                                fontSize = 13.sp,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 5.dp)
-                            )
+                if (state.modules.isNotEmpty()) {
+                    ModulesSelectionCard(
+                        modules = state.modules,
+                        onToggle = { viewModel.toggleModule(it) },
+                        onToggleAll = { viewModel.toggleModule("", selectAll = true) },
+                        onView = { viewingModule = it }
+                    )
+                }
+                TemplatesCard(
+                    state = state,
+                    viewModel = viewModel,
+                    onMessage = { message ->
+                        scope.launch {
+                            fileLoadingStatus = message
+                            showFileLoadedSnackBar = true
+                            delay(2500)
+                            showFileLoadedSnackBar = false
                         }
                     }
-                }
+                )
 
                 RectangleWithShadow(
                     bgColor = PrimaryColor,
@@ -311,26 +255,31 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
                             }
 
                             is TranslationResult.UpdateProgress -> {
-                                Box(
-                                    contentAlignment = Alignment.Center,
+                                Column(
                                     modifier = Modifier.fillMaxWidth().wrapContentHeight()
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(14.dp)
                                 ) {
-                                    val progress = result.progress
-                                    LinearProgressIndicator(
-                                        progress = progress / 100f,
-                                        modifier = Modifier.fillMaxWidth().height(60.dp)
-                                            .padding(10.dp),
-                                        backgroundColor = LightPrimary,
-                                        strokeCap = StrokeCap.Round,
-                                        color = GreenColor
+                                    // Overall, language-level progress across all (module × language)
+                                    // units, shown as a count e.g. "Languages   2/10".
+                                    val totalUnits = result.totalUnits.coerceAtLeast(1)
+                                    ProgressRow(
+                                        label = if (result.moduleName.isNotBlank())
+                                            "${result.moduleName} → ${result.translatingLang}"
+                                        else
+                                            "Translating ${result.translatingLang}",
+                                        count = "${(result.completedUnits + 1).coerceAtMost(totalUnits)}/$totalUnits",
+                                        fraction = result.completedUnits.toFloat() / totalUnits
                                     )
-                                    Text(
-                                        text = "Translating ${result.translatingLang} (${progress} %)",
-                                        color = Color.White,
-                                        fontSize = 13.sp,
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
+
+                                    // Per-language string-level progress for the language being translated.
+                                    if (result.totalStrings > 0) {
+                                        ProgressRow(
+                                            label = "${result.translatingLang} strings",
+                                            count = "${result.translatedStrings}/${result.totalStrings}",
+                                            fraction = result.translatedStrings.toFloat() / result.totalStrings
+                                        )
+                                    }
                                 }
                             }
 
@@ -345,18 +294,6 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
             }
         }
     }
-    if (showSnackBar) {
-        Snackbar(
-            action = {
-                TextButton(onClick = { showSnackBar = false }) {
-                    Text("Dismiss")
-                }
-            }
-        ) {
-            Text("Exported successfully to Downloads")
-        }
-    }
-
     if (showFileLoadedSnackBar) {
         Snackbar(
             action = {
@@ -369,63 +306,203 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
         }
     }
 
-    JsonGuideDialog(
-        showImportGuideDialog,
-        onDismiss = {
-            showImportGuideDialog = false
-        }
-    )
+    viewingModule?.let { module ->
+        ModuleStringsDialog(
+            module = module,
+            content = viewModel.moduleStringsXml(module.resPath),
+            onDismiss = { viewingModule = null }
+        )
+    }
 
 }
 
 
+/**
+ * One labeled progress line: a left-aligned [label], a right-aligned [count] (e.g. "2/10"),
+ * and a full-width rounded progress bar underneath. Used for both the overall language-level
+ * bar and the per-language string-level bar so they share identical alignment.
+ */
 @Composable
-fun JsonGuideDialog(
-    showDialog: Boolean,
-    onDismiss: () -> Unit
+private fun ProgressRow(label: String, count: String, fraction: Float) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                color = Color.White,
+                fontSize = 13.sp,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            HorizontalSpacer(8)
+            Text(
+                text = count,
+                color = Color.White,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+        VerticalSpacer(6)
+        LinearProgressIndicator(
+            progress = fraction.coerceIn(0f, 1f),
+            modifier = Modifier.fillMaxWidth().height(10.dp),
+            backgroundColor = LightPrimary,
+            strokeCap = StrokeCap.Round,
+            color = GreenColor
+        )
+    }
+}
+
+
+@Composable
+private fun ModulesSelectionCard(
+    modules: List<ModuleSelection>,
+    onToggle: (resPath: String) -> Unit,
+    onToggleAll: () -> Unit,
+    onView: (ModuleSelection) -> Unit,
 ) {
-    if (showDialog) {
-        AlertDialog(
-            backgroundColor = PrimaryColor,
-            onDismissRequest = onDismiss,
-            confirmButton = {
-                TextButton(
-                    onClick = onDismiss,
-                    colors = ButtonDefaults.buttonColors(Color(0xff03b6fc))
-                ) {
-                    Text("OK")
-                }
-            },
-            title = {
-                Text("Guide (JSON format)")
-            },
-            text = {
-                val jsonGuide = """
-                    {
-                      "step1": "Tap the 'Select File' button.",
-                      
-                      "step2": "Choose a file that contains an array of language codes.",
-
-                       "example": ["ar", "af", "en", "fr"],
-                       
-                      "note": "The file must be a valid JSON file with language codes in an array format."
-                    }
-                """.trimIndent()
-
-                Box(
-                    modifier = Modifier
-                        .heightIn(min = 100.dp, max = 300.dp)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    Text(
-                        text = jsonGuide,
-                        style = TextStyle(
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 14.sp
+    RectangleWithShadow(
+        bgColor = PrimaryColor,
+        modifier = Modifier.fillMaxWidth().padding(top = 10.dp).wrapContentHeight()
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Modules to translate",
+                    color = Color.White,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                val allSelected = modules.all { it.selected }
+                Text(
+                    text = if (allSelected) "Unselect all" else "Select all",
+                    color = Color(0xff03b6fc),
+                    fontSize = 12.sp,
+                    modifier = Modifier.clickable { onToggleAll() }
+                )
+            }
+            VerticalSpacer()
+            Column(
+                modifier = Modifier.fillMaxWidth()
+                    .heightIn(max = 220.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                modules.forEach { module ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth()
+                            .clickable { onToggle(module.resPath) }
+                            .padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = module.selected,
+                            onCheckedChange = { onToggle(module.resPath) },
+                            colors = CheckboxDefaults.colors(
+                                checkedColor = GreenColor,
+                                uncheckedColor = Color.LightGray,
+                                checkmarkColor = Color.White
+                            )
                         )
-                    )
+                        Text(
+                            text = module.name,
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            modifier = Modifier.weight(1f).padding(start = 4.dp).basicMarquee()
+                        )
+                        Text(
+                            text = "${module.stringCount} strings",
+                            color = Color(0xff03b6fc),
+                            fontSize = 12.sp,
+                        )
+                        HorizontalSpacer()
+                        Text(
+                            text = "View",
+                            color = GreenColor,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .clickable { onView(module) }
+                                .padding(horizontal = 4.dp)
+                        )
+                    }
                 }
             }
-        )
+        }
+    }
+}
+
+@Composable
+private fun ModuleStringsDialog(
+    module: ModuleSelection,
+    content: String,
+    onDismiss: () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            color = PrimaryColor,
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.width(720.dp).height(560.dp)
+        ) {
+            Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                Text(
+                    text = "${module.name} • values/strings.xml (${module.stringCount} strings)",
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                VerticalSpacer()
+
+                // weight(1f) bounds the scroll area to the remaining height inside the fixed-size
+                // dialog, so the content never grows the window as you scroll.
+                val vScroll = rememberScrollState()
+                val hScroll = rememberScrollState()
+                Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                    SelectionContainer(
+                        modifier = Modifier.fillMaxSize()
+                            .verticalScroll(vScroll)
+                            .horizontalScroll(hScroll)
+                            .padding(end = 12.dp, bottom = 12.dp)
+                    ) {
+                        Text(
+                            text = content.ifBlank { "(empty or no strings.xml found)" },
+                            color = Color.White,
+                            softWrap = false,
+                            style = TextStyle(
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 12.sp
+                            )
+                        )
+                    }
+                    VerticalScrollbar(
+                        adapter = rememberScrollbarAdapter(vScroll),
+                        modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight()
+                    )
+                    HorizontalScrollbar(
+                        adapter = rememberScrollbarAdapter(hScroll),
+                        modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth()
+                            .padding(end = 12.dp)
+                    )
+                }
+
+                VerticalSpacer()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(
+                        onClick = onDismiss,
+                        colors = ButtonDefaults.buttonColors(Color(0xff03b6fc))
+                    ) {
+                        Text("Close")
+                    }
+                }
+            }
+        }
     }
 }

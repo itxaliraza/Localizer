@@ -4,13 +4,17 @@ import data.translator.MyTranslatorRepoImpl
 import data.translator.apis.TranslatorApi1Impl
 import data.translator.apis.TranslatorApi2Impl
 import data.translator.apis.TranslatorApi3Impl
+import data.util.TemplatesRepository
 import home_screen.HomeScreenViewModel
 import data.translator.TranslationManager
 import org.koin.dsl.module
 
 val SharedModule = module{
     factory {
-        HomeScreenViewModel(get())
+        HomeScreenViewModel(get(), get())
+    }
+    single {
+        TemplatesRepository()
     }
     factory {
         MyTranslatorRepoImpl(get(),get(),get())
