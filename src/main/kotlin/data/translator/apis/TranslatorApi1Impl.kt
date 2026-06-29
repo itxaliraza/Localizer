@@ -54,44 +54,29 @@ class TranslatorApi1Impl :TranslatorApis{
     }
 
 
-    private fun getTranslationData(to_translate: String): String {
-//    println("api 1 getTranslationData $to_translate")
-            var nativeText = "class=\"t0\">"
-            val result =
-                to_translate.substring(to_translate.indexOf(nativeText) + nativeText.length)
-                    .split("<".toRegex()).toTypedArray()[0]
-            return if (result == "html>") {
-                nativeText = "class=\"result-container\">"
-                to_translate.substring(to_translate.indexOf(nativeText) + nativeText.length)
-                    .split("<".toRegex()).toTypedArray()[0] + ""
-            } else {
-                throw Exception("Api error")
-            }
+    private fun getTranslationData(toTranslate: String): String {
+        // The mobile page wraps the translation in a single container. Current markup uses
+        // `class="result-container">`; older markup used `class="t0">`. Try both explicitly
+        // instead of relying on byte-offset coincidences in the HTML preamble.
+        val marker = listOf("class=\"result-container\">", "class=\"t0\">")
+            .firstOrNull { toTranslate.contains(it) }
+            ?: throw Exception("Api1 error: translation container not found")
 
-        return ""
+        val start = toTranslate.indexOf(marker) + marker.length
+        val raw = toTranslate.substring(start).substringBefore("<")
+        return raw.unescapeHtml()
     }
+
+    // The container text is HTML-escaped (e.g. `&quot;`, `&amp;`). Decode it so the value we hand
+    // back is the same plain text the JSON endpoints return — otherwise `&` would later be
+    // double-escaped to `&amp;amp;` when written into the XML.
+    private fun String.unescapeHtml(): String =
+        replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&quot;", "\"")
+            .replace("&#39;", "'")
+            .replace("&#x27;", "'")
+            .replace("&amp;", "&")
 }
 
 
-
-fun String.escapeXml(): String {
-    val replacements = mapOf(
-        "&" to "&amp;",
-        "'" to "&apos;",
-        "\"" to "&quot;",
-        "<" to "&lt;",
-        ">" to "&gt;",
-        "\n" to "&#10;",
-        "\r" to "&#13;",
-        "\t" to "&#9;",
-
-        )
-
-    var escapedString = this
-
-    replacements.forEach { (key, value) ->
-        escapedString = escapedString.replace(key, value)
-    }
-
-    return escapedString.replace("&amp;amp;","&amp;")
-}
