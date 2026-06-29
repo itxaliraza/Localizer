@@ -9,7 +9,10 @@ Reads `strings.xml` files using the Java DOM API, extracts translatable key-valu
 - `src/main/kotlin/data/FilesHelper.kt` — all XML logic:
   - `parseXml(file: File): FileXmlData` — DOM parse; extracts `<string name="key">value</string>` pairs; filters out `translatable="false"` entries
   - `getFilesXmlContents(files: List<File>): List<FileXmlData>` — batch parse wrapper
-  - `extractLanguageCode(folderName: String): String` — regex to strip `values-` prefix from directory name
+  - `extractLanguageCode(folderName: String): Pair<String,String>` — regex to strip `values-` prefix; returns `rawCode to standardizedCode`. Normalizes Android qualifier forms via `fromAndroidResFolderCode`, applies legacy/Google remaps (`in`→`id`, `he`→`iw`, `zh`→`zh-CN`, …), then resolves to the exact `availableLanguages` code via `resolveAvailableCode`
+  - `fromAndroidResFolderCode(code: String): String` — inverse of `toAndroidResFolderCode`: Android qualifier → locale code (`pt-rBR`→`pt-BR`, `zh-rCN`→`zh-CN`, `b+ms+Arab`→`ms-Arab`). Idempotent for plain codes
+  - `resolveAvailableCode(code: String): String` (private) — matches a locale code against `availableLanguages` (case-insensitive exact, then base-language fallback so `pt-BR`→`pt`, `es-MX`→`es`)
+  - `toAndroidResFolderCode(code: String): String` — converts a Google/Locale code into a valid Android resource qualifier on write (`pt-BR`→`pt-rBR`, `zh-CN`→`zh-rCN`; scripts/numeric regions like `ms-Arab`/`es-419`→`b+ms+Arab`). Idempotent (`zh-rCN`, `b+zh+CN` pass through unchanged)
   - `mergeEntriesIntoXml(existingXml: String, newEntries: Map<String, String>): String` — parses the existing target file, appends only `<string>` entries whose `name` is not already present, strips whitespace-only text nodes, and re-serializes with UTF-8 + indentation. **Preserves** existing strings, `<string-array>`, `<plurals>`, comments and `translatable="false"` strings. (Replaced `addNewEntriesToXmlNew`, which rebuilt from scratch and dropped all of those.)
   - `writeXmlToFile(xmlString: String, file: File)` — creates parent dirs if needed, writes UTF-8 file
   - `combineStringsWithLimit(list, limit)` — utility for chunking strings (used in batch requests if applicable)
@@ -19,7 +22,7 @@ Reads `strings.xml` files using the Java DOM API, extracts translatable key-valu
 
 - `FileXmlData` (data class in `FilesHelper.kt`): `contents: String`, `keyValuePairs: Map<String, String>`, `languageCode: String`
 - Reads from: file system paths in `ExtractionResult.extractedFiles`
-- Writes to: `<outputDir>/values-<lang>/strings.xml`; directories created if missing
+- Writes to: `<outputDir>/values-<lang>/strings.xml`; directories created if missing. The `<lang>` qualifier is sanitized via `toAndroidResFolderCode` so region-qualified locales produce Android-valid folders (`values-pt-rBR`, not `values-pt-BR`)
 
 ## Dependencies
 

@@ -35,19 +35,85 @@ object FilesHelper {
     }
 
     fun extractLanguageCode(fileName: String): Pair<String, String> {
-        val regex = Regex("""values-([\w-]+)/""")
+        // Allow `+` so BCP47 qualifier folders (values-b+ms+Arab) are captured too.
+        val regex = Regex("""values-([\w+-]+)/""")
         val rawCode = regex.find(fileName)?.groups?.get(1)?.value ?: return "en" to "en"
 
-        val standardizedCode = when (rawCode) {
-            "zh", "zh-rCN" -> "zh-CN"
-            "zh-rTW" -> "zh-TW"
+        // First undo any Android resource qualifier form (pt-rBR -> pt-BR, b+ms+Arab -> ms-Arab),
+        // then apply the legacy / Google-Translate remaps.
+        val localeCode = fromAndroidResFolderCode(rawCode)
+        val remapped = when (localeCode) {
+            "zh", "zh-CN" -> "zh-CN"
+            "zh-TW" -> "zh-TW"
             "in" -> "id"
             "he" -> "iw"
             "ji" -> "yi"
-            else -> rawCode
+            else -> localeCode
         }
 
-        return rawCode to standardizedCode
+        return rawCode to resolveAvailableCode(remapped)
+    }
+
+    /**
+     * Resolves a locale code to the exact code present in [availableLanguages]. Tries a
+     * case-insensitive exact match first; if none, falls back to the base language subtag — so an
+     * Android region folder like `values-pt-rBR` (→ `pt-BR`) still resolves to the available `pt`
+     * entry, and `values-es-rMX` resolves to `es`. Returns the input unchanged if nothing matches.
+     */
+    private fun resolveAvailableCode(code: String): String {
+        availableLanguages.firstOrNull { it.langCode.equals(code, ignoreCase = true) }?.let { return it.langCode }
+        val base = code.substringBefore('-')
+        if (base != code) {
+            availableLanguages.firstOrNull { it.langCode.equals(base, ignoreCase = true) }
+                ?.let { return it.langCode }
+        }
+        return code
+    }
+
+    /**
+     * Inverse of [toAndroidResFolderCode]: converts an Android resource folder qualifier back into a
+     * plain locale code so it can be matched against [availableLanguages].
+     * - `pt-rBR` → `pt-BR`, `zh-rCN` → `zh-CN` (region subtag, strip the `r` prefix)
+     * - `b+ms+Arab` → `ms-Arab`, `b+es+419` → `es-419` (BCP47 form)
+     * Idempotent: plain codes (`pt`, `zh-CN`, `ms-Arab`) pass through unchanged.
+     */
+    fun fromAndroidResFolderCode(code: String): String {
+        if (code.startsWith("b+")) return code.removePrefix("b+").replace('+', '-')
+
+        val parts = code.split('-')
+        // Android region form lang-rYY -> lang-YY.
+        if (parts.size == 2 && parts[1].matches(Regex("r[A-Za-z]{2}"))) {
+            return "${parts[0]}-${parts[1].substring(1).uppercase()}"
+        }
+        return code
+    }
+
+    /**
+     * Converts a Google Translate / Locale style language code into a valid Android resource
+     * folder qualifier. Android rejects plain region codes such as `pt-BR`; the region subtag
+     * must carry an `r` prefix (`pt-rBR`). Script subtags (e.g. `ms-Arab`) and numeric UN M.49
+     * regions (e.g. `es-419`) cannot use the `r` form, so they fall back to the BCP47 `b+` form
+     * (`b+ms+Arab`), supported by Android resource qualifiers since API 21.
+     *
+     * Idempotent: codes already in Android form (`zh-rCN`, `b+zh+CN`) are returned unchanged.
+     */
+    fun toAndroidResFolderCode(code: String): String {
+        if (code.startsWith("b+")) return code            // already BCP47
+        if (!code.contains('-')) return code              // bare language, e.g. "pt", "fr"
+
+        val parts = code.split('-')
+        // Already Android region form (xx-rYY) — leave untouched.
+        if (parts.size == 2 && parts[1].matches(Regex("r[A-Z]{2}"))) return code
+
+        if (parts.size != 2) return "b+" + parts.joinToString("+")
+
+        val (lang, sub) = parts
+        return when {
+            // 2-letter ISO 3166-1 region -> language-rREGION (conventional, all API levels)
+            sub.length == 2 && sub.all { it.isLetter() } -> "$lang-r${sub.uppercase()}"
+            // numeric region or script subtag -> BCP47
+            else -> "b+$lang+$sub"
+        }
     }
 
 

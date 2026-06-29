@@ -10,7 +10,8 @@ Koin 4.0.0-RC2 with `io.insert-koin:koin-compose` integration.
 
 ```kotlin
 val SharedModule = module {
-    factory { HomeScreenViewModel(get()) }           // get() = TranslationManager
+    factory { HomeScreenViewModel(get(), get()) }    // get()×2 = TranslationManager, TemplatesRepository
+    single  { TemplatesRepository() }                // persists language templates to ~/.fast-localizer/templates.json
     factory { MyTranslatorRepoImpl(get(), get(), get()) } // get()×3 = Api1, Api2, Api3
     factory { TranslationManager(get()) }            // get() = MyTranslatorRepoImpl
     factory { TranslatorApi1Impl() }
@@ -33,11 +34,12 @@ startKoin {
 
 ```
 HomeScreenViewModel
-  └── TranslationManager
-        └── MyTranslatorRepoImpl
-              ├── TranslatorApi1Impl
-              ├── TranslatorApi2Impl
-              └── TranslatorApi3Impl
+  ├── TranslationManager
+  │     └── MyTranslatorRepoImpl
+  │           ├── TranslatorApi1Impl
+  │           ├── TranslatorApi2Impl
+  │           └── TranslatorApi3Impl
+  └── TemplatesRepository  (single)
 ```
 
 ## Injection Site
@@ -54,6 +56,5 @@ All registrations are `factory` — a new instance is created on each injection.
 - `FilesHelper` — Kotlin `object`, accessed directly from `TranslationManager` and `FolderExtractor`
 - `FolderExtractor` — Kotlin `object`, accessed directly from `HomeScreenViewModel`
 - `LocalizationUtils` — Kotlin `object`, accessed directly from `MyTranslatorRepoImpl`
-- `LangImportExportHelper` — top-level functions, called directly from `HomeScreenNew`
 - `NetworkClient` — Kotlin `object`, accessed directly from API impls
 - `AvailableLanguages` — top-level lazy val, read directly in `HomeScreenViewModel.init`

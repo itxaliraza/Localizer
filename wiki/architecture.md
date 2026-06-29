@@ -5,10 +5,11 @@
 ```
 UI (Composables)
   └── ViewModel (HomeScreenViewModel)
-        ├── Domain (TranslationManager, FolderExtractor, LangImportExportHelper)
+        ├── Domain (TranslationManager, FolderExtractor)
         └── Data
               ├── Network (MyTranslatorRepoImpl → TranslatorApi1/2/3 → NetworkClient)
               ├── File I/O (FilesHelper, FolderExtractor)
+              ├── Persistence (TemplatesRepository → ~/.fast-localizer/templates.json)
               └── Utilities (LocalizationUtils, openDownloadsFolder)
 ```
 
@@ -32,7 +33,7 @@ UI (Composables)
 ## Dependency Rules
 
 - UI layer (`home_screen/`, `languages_screen/`, `common_components/`, `Main.kt`) depends on `domain/model/` and the ViewModel. It does **not** import from `data/`.
-- `HomeScreenViewModel` depends on `TranslationManager`, `FolderExtractor`, `LangImportExportHelper`, and `AvailableLanguages`.
+- `HomeScreenViewModel` depends on `TranslationManager`, `TemplatesRepository` (both Koin-injected), `FolderExtractor`, and `AvailableLanguages`.
 - `TranslationManager` depends on `MyTranslatorRepoImpl` and `FilesHelper`.
 - `MyTranslatorRepoImpl` depends on the three API impls and `LocalizationUtils`.
 - `data/` has no dependency on `home_screen/` or `languages_screen/`.

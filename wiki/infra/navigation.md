@@ -20,10 +20,10 @@ main() [Main.kt]
 
 | Overlay | Type | Trigger | Dismiss |
 |---------|------|---------|---------|
-| `JsonGuideDialog` | Compose `AlertDialog` | "?" icon next to Import Languages | "Close" button sets local bool to false |
-| File picker | AWT `FileDialog` | "Import Languages" button | OS dialog cancel |
-| Snackbar (file loaded) | Custom Compose overlay | `HomeScreenOneTimeEvents.FileLoadedSuccess/Fail` | Auto-dismiss after timeout |
-| Snackbar (export) | Custom Compose overlay | Export button success | Auto-dismiss |
+| Save-as-template dialog | Compose `Dialog` (in `TemplatesCard`) | "Save" pill in Language Templates card | "Cancel" / "Save" |
+| Delete-template confirm | Compose `Dialog` (in `TemplatesCard`) | trash icon on a template row | "Cancel" / "Delete" |
+| `ModuleStringsDialog` | Compose `Dialog` | "View" on a module row | "Close" |
+| Snackbar (file loaded / templates) | Custom Compose overlay | `HomeScreenOneTimeEvents.FileLoadedSuccess/Fail`, or `TemplatesCard` save/apply/delete | Auto-dismiss after timeout |
 
 ## Entry Point
 

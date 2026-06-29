@@ -25,9 +25,8 @@ Allows the user to pick which target languages to translate into. Supports indiv
 ## Consumers
 
 - `src/main/kotlin/languages_screen/LanguagesScreen.kt` — renders selection state
-- `src/main/kotlin/home_screen/HomeScreenNew.kt` — passes selection count to header; provides Import/Export buttons that read/write `selectedLanguages`
+- `src/main/kotlin/home_screen/components/TemplatesCard.kt` — reads `selectedLanguages` to save a template; `applyTemplate` replaces `selectedLanguages` (see [language-templates.md](language-templates.md))
 - `src/main/kotlin/home_screen/HomeScreenViewModel.kt` — `translate()` reads `selectedLanguages` to determine which languages to generate
-- `src/main/kotlin/data/util/LangImportExportHelper.kt` — export writes `selectedLanguages.map { it.langCode }` to JSON
 
 ## Notes
 
