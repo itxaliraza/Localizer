@@ -1,10 +1,12 @@
 package data
 
 import org.w3c.dom.Element
+import org.w3c.dom.NodeList
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.StringWriter
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.zip.ZipEntry
@@ -14,6 +16,8 @@ import javax.xml.transform.OutputKeys
 import javax.xml.transform.TransformerFactory
 import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamResult
+import javax.xml.xpath.XPathConstants
+import javax.xml.xpath.XPathFactory
 
 
 object FilesHelper {
@@ -51,7 +55,7 @@ object FilesHelper {
         val keyValuePairs = mutableMapOf<String, String>()
         val root = DocumentBuilderFactory.newInstance()
             .newDocumentBuilder()
-            .parse(ByteArrayInputStream(xmlContent.toByteArray()))
+            .parse(ByteArrayInputStream(xmlContent.toByteArray(StandardCharsets.UTF_8)))
             .documentElement
 
         val nodeList = root.getElementsByTagName("string")
@@ -105,32 +109,62 @@ object FilesHelper {
         }
     }
 
-    fun addNewEntriesToXmlNew(newEntries: Map<String, String>): String {
+    /**
+     * Merges [newEntries] into the existing target [existingXml], preserving everything already
+     * present — existing `<string>` entries, `<string-array>`, `<plurals>`, comments and any
+     * `translatable="false"` strings. Only keys that are not already present as a `<string name=…>`
+     * element are appended, so a re-run never duplicates or destroys prior content.
+     *
+     * (Replaces the old `addNewEntriesToXmlNew`, which rebuilt the file from scratch and silently
+     * dropped arrays, plurals, comments and non-translatable strings.)
+     */
+    fun mergeEntriesIntoXml(existingXml: String, newEntries: Map<String, String>): String {
         try {
-            val docFactory = DocumentBuilderFactory.newInstance()
+            val docBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder()
 
-            val docBuilder = docFactory.newDocumentBuilder()
+            val doc = if (existingXml.isBlank()) {
+                docBuilder.newDocument().apply { appendChild(createElement("resources")) }
+            } else {
+                docBuilder.parse(ByteArrayInputStream(existingXml.toByteArray(StandardCharsets.UTF_8)))
+            }
 
-            val doc = docBuilder.newDocument()
-            val rootElement = doc.createElement("resources")
-            doc.appendChild(rootElement)
+            val rootElement = doc.documentElement
 
-            for (node in newEntries) {
+            // Collect names already declared as <string> so we never append a duplicate.
+            val existingNames = mutableSetOf<String>()
+            val existingStrings = rootElement.getElementsByTagName("string")
+            for (i in 0 until existingStrings.length) {
+                existingNames.add((existingStrings.item(i) as Element).getAttribute("name"))
+            }
+
+            for ((key, value) in newEntries) {
+                if (key in existingNames) continue
                 val element = doc.createElement("string")
-                element.setAttribute("name", node.key)
-                element.textContent = node.value
+                element.setAttribute("name", key)
+                element.textContent = value
                 rootElement.appendChild(element)
+            }
+
+            // Strip whitespace-only text nodes so the indenter can re-pretty-print cleanly
+            // instead of inheriting the original file's spacing and producing ragged output.
+            val blankNodes = XPathFactory.newInstance().newXPath()
+                .evaluate("//text()[normalize-space()='']", doc, XPathConstants.NODESET) as NodeList
+            for (i in 0 until blankNodes.length) {
+                val node = blankNodes.item(i)
+                node.parentNode?.removeChild(node)
             }
 
             val transformer = TransformerFactory.newInstance().newTransformer()
             transformer.setOutputProperty(OutputKeys.INDENT, "yes")
+            transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8")
+            transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4")
 
             val result = StreamResult(StringWriter())
             transformer.transform(DOMSource(doc), result)
             return result.writer.toString()
 
         } catch (e: Exception) {
-            throw IllegalArgumentException("Error occurred: ${e.message}")
+            throw IllegalArgumentException("Error occurred while merging XML: ${e.message}")
         }
     }
 

@@ -28,8 +28,11 @@ object LocalizationUtils {
                 val type = match.groupValues[2].lowercase()
                 "%$index\$$type"
             }
+            // Android string resources require apostrophes and double quotes to be escaped.
+            // All three endpoints now return plain text (API1 is HTML-unescaped at its layer),
+            // so escape the real characters uniformly rather than the old `&quot;`-only hack.
             .replace("'", "\\'")
-            .replace("&quot;", "\\\"") // optional: escape quotes if needed
+            .replace("\"", "\\\"")
             .replace("\\ n", "\\n")
     }
 }

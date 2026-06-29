@@ -8,15 +8,19 @@ import data.util.LocalizationUtils.restoreAfterTranslation
 import data.util.LocalizationUtils.sanitizeForTranslation
 import domain.model.LanguageModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
-
-var lastCalledIndex = 0
 
 class MyTranslatorRepoImpl(
     private val translatorApi1Impl: TranslatorApi1Impl,
     private val translatorApi2Impl: TranslatorApi2Impl,
     private val translatorApi3Impl: TranslatorApi3Impl
 ) {
+
+    // Round-robin starting point for endpoint rotation. Instance state (Koin registers this repo
+    // as `factory`) so it resets per translation session. The increment is a benign racy write
+    // under parallel translation — it only nudges which endpoint is tried first.
+    private var lastCalledIndex = 0
 
     suspend fun getTranslation(
         fromLanguage: String = "en",
@@ -47,8 +51,8 @@ class MyTranslatorRepoImpl(
         val totalApis = translationApis.size
         val lastIndex = lastCalledIndex
         for (index in 0 until totalApis) {
-            val currentIndex =
-                (lastIndex + index) % totalApis // Circular iterati             ensureActive()
+            ensureActive()
+            val currentIndex = (lastIndex + index) % totalApis // circular rotation
             val translatorApi = translationApis[currentIndex]
 
 
@@ -59,17 +63,6 @@ class MyTranslatorRepoImpl(
             )
             if (translationResult is NetworkResponse.Success) {
                 lastCalledIndex += 1
-//                if (query.contains("&") || query.contains("'") || query.contains("\'")) {
-                if (query.contains("\"")) {
-                    println("result query = $query")
-                    println("result query sanitize ${sanitizeForTranslation(query)}")
-                    println("result simple response ${toLanguage.langCode} ${translationResult.data}")
-                    println(
-                        "result after restore ${
-                            restoreAfterTranslation(translationResult.data ?: "")
-                        }"
-                    )
-                }
                 return@withContext NetworkResponse.Success(
                     restoreAfterTranslation(translationResult.data ?: "")
                 )
