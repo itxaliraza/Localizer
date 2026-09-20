@@ -4,6 +4,28 @@ Append-only. One entry per change session. Format: `## YYYY-MM-DD — <summary>`
 
 ---
 
+## 2026-09-20 — Ship check: real block is HTTP 429 on API2; status check, scraper out of the rotation, escalating cool-down
+
+**Reported:** a new real-run log: 8× `A JSONArray text must start with '['` at the start, `Api1 error: translation container not found` at `api 0` while API3 was translating, and the question "check and verify so I can ship".
+
+**Findings**
+- The 8 JSON errors were **HTTP 429** pages. `NetworkClient` ignored the status, so the block page reached the JSON parser as "success" text and only org.json's parse message survived. Reproduced: in a JVM, `translate_a/single` returns 429 on **both** `translate.google.com` and `translate.googleapis.com`, from Ktor and from the JDK's own client, with any User-Agent/Accept header, while Python gets 200 from the same IP. `clients4` (API3) works. See [features/translation-api.md](features/translation-api.md).
+- The scraper was in the endpoint **rotation** (contrary to what this wiki said): each time its cool-down expired it got one request in three, so a blocked host kept being hit while the JSON endpoints were fine. That is the `Api1 error` at `api 0`.
+
+**Fixes**
+- `NetworkClient`: a non-2xx status is a `Failure("HTTP 429 Too Many Requests: <snippet>")`; new `String.snippet()`.
+- `TranslatorApi2Impl` / `TranslatorApi3Impl`: parse failures say `ApiN error: not a JSON translation (<snippet>)`; API3's `println("texttt=…")` debug line removed.
+- `MyTranslatorRepoImpl`: only the two JSON endpoints rotate, the scraper is always last; the cool-down doubles per consecutive failed episode up to 10× and resets on success.
+- Tests: `NetworkClientTest` (local `HttpServer`: 200 / 429 / 503 / snippet), rotation and cool-down tests in `MyTranslatorRepoImplTest`. 95 pass, 1 skipped (live sweep).
+
+**Measured (live, real manager + real endpoints, temp test, deleted):** 24 languages (incl. az km om pa pt sv tk sr is hi am ar ja zh-CN tt ug or gu ky …) × 71 keys (placeholders, `<b>`/`<a>`, quotes, `&`, plural): **1704 translated, 0 failed, 0 issues, all 24 files complete, 262 s.** API2 0/25 ok (429), API3 1720/1720 ok. Not tested: the full ~130 languages × ~69 keys.
+
+**Housekeeping:** the temp scale test was committed by mistake in `bb889de` (the user committed while it existed); it is deleted in the working tree and needs a commit.
+
+**Files touched:** `src/main/kotlin/data/network/client/NetworkClient.kt`, `src/main/kotlin/data/translator/apis/TranslatorApi2Impl.kt`, `TranslatorApi3Impl.kt`, `src/main/kotlin/data/translator/MyTranslatorRepoImpl.kt`, `src/test/kotlin/data/network/NetworkClientTest.kt`, `src/test/kotlin/data/translator/MyTranslatorRepoImplTest.kt`; wiki: `features/translation-api.md`, `infra/data.md`, `infra/build.md`, `log.md`.
+
+---
+
 ## 2026-09-20 — "Translation still failed": web-only languages routed through the blocked scraper; route via JSON, add endpoint cool-down
 
 **Reported:** a second real-run log — az and km still failing on every string ("translation container not found").

@@ -229,6 +229,66 @@ class MyTranslatorRepoImplTest {
         assertEquals("Hola", result.data)
     }
 
+    /** Two requests: the rotation offset moves after each success, so this reaches both JSON endpoints. */
+    private fun both(repo: MyTranslatorRepoImpl) { translate(repo, "Hello"); translate(repo, "Hello") }
+
+    @Test
+    fun `an endpoint that keeps failing is probed less and less often`() {
+        now = 0
+        val json2 = failing("HTTP 429")                       // never recovers
+        val json3 = ok { it.replace("Hello", "Hola") }
+        val repo = coolingRepo(failing(), json2, json3)      // cooldownMs = 1000
+
+        both(repo)                             // fail #1 at t=0    -> cool until 1000
+        now = 1_100; both(repo)                // probed again; fail #2 -> cool 2x = until 3100
+        assertEquals(2, json2.received.size)
+
+        now = 3_000; both(repo)                // still cooling (would be asked after a flat 1s cool-down)
+        assertEquals(2, json2.received.size, "second cool-down must be longer than the first")
+
+        now = 3_200; both(repo)                // fail #3 -> cool 4x = until 7200
+        assertEquals(3, json2.received.size)
+        now = 7_000; both(repo)
+        assertEquals(3, json2.received.size, "third cool-down is 4x")
+    }
+
+    @Test
+    fun `the cool-down is capped`() {
+        now = 0
+        val json2 = failing("HTTP 429")
+        val repo = coolingRepo(failing(), json2, ok { it })  // cooldownMs = 1000, cap = 10x
+
+        repeat(12) { both(repo); now += 1_000_000 }          // far past any cool-down: each round is a new episode
+        both(repo)                                           // one more episode: cool-down capped at 10_000
+        val before = json2.received.size
+        now += 9_999
+        both(repo)
+        assertEquals(before, json2.received.size, "still inside the capped 10s cool-down")
+        now += 2
+        both(repo)
+        assertEquals(before + 1, json2.received.size, "cap is 10x, not more")
+    }
+
+    @Test
+    fun `a success resets the escalated cool-down`() {
+        now = 0
+        var healthy = false
+        val json2 = FakeApi { if (healthy) NetworkResponse.Success(it.replace("Hello", "Hola")) else NetworkResponse.Failure("429") }
+        val repo = coolingRepo(failing(), json2, ok { it.replace("Hello", "Hej") })
+
+        both(repo)                                           // fail #1 until 1000
+        now = 1_100; both(repo)                              // fail #2 until 3100
+        now = 3_200; healthy = true
+        both(repo)                                           // json2 answers -> streak cleared
+
+        healthy = false
+        now = 3_300; both(repo)                              // fails again, but as episode #1: cool 1x = until 4300
+        val asked = json2.received.size
+        now = 4_400                                          // > 1x, but < the 8x it would be without the reset
+        both(repo)
+        assertEquals(asked + 1, json2.received.size)
+    }
+
     @Test
     fun `when every endpoint is cooling they are all still tried - no dead end`() {
         now = 0
