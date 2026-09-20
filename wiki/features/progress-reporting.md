@@ -10,6 +10,7 @@ Shows the user real-time translation progress on **two** bars: (1) an overall, l
 - `src/main/kotlin/data/translator/TranslationManager.kt` — a `channelFlow`; emits `UpdateProgress` once per finished key inside `processTranslation` (an extension on `ProducerScope<TranslationResult>`). `completedUnits` = units fully done so far (0-based, stable across a language's string emits), `totalUnits` = modules × translatable languages; `totalStrings` = count of missing keys for the language, `translatedStrings` = `AtomicInteger` incremented as each key finishes.
 - `src/main/kotlin/home_screen/HomeScreenNew.kt` — when `translationResult is UpdateProgress`, renders a `Column` of `ProgressRow`s: the overall row shows count `"${completedUnits + 1}/${totalUnits}"` with bar fraction `completedUnits / totalUnits`, and (when `totalStrings > 0`) a per-string row showing `"${translatedStrings}/${totalStrings}"`. `ProgressRow(label, count, fraction)` is the private helper.
 - `src/main/kotlin/home_screen/HomeScreenViewModel.kt` — collects the Flow and calls `_state.update { it.copy(translationResult = it) }`
+- The terminal result is `TranslationCompleted(translatedKeys, failedKeys, issues)`; the UI shows a problems summary when `hasProblems` (see [home-screen.md](../screens/home-screen.md))
 
 ## State & data
 

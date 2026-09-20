@@ -12,12 +12,12 @@ No database or cache. Almost all data is in-memory and lost on close — the one
 
 | Component | File | Role |
 |-----------|------|------|
-| `FolderExtractor` | `data/util/FolderExtractor.kt` | Resolves a res folder OR a project root into a list of `ModuleExtraction`s; scans `values/` dirs, creates missing `strings.xml` |
-| `FilesHelper` | `data/FilesHelper.kt` | DOM parse of individual `strings.xml`; writes output XML to disk |
+| `FolderExtractor` | `data/util/FolderExtractor.kt` | Resolves a res folder OR a project root into a list of `ModuleExtraction`s; reads `values` + real language folders only (read-only — never writes to the project; a language folder with no `strings.xml` is modelled in memory) |
+| `FilesHelper` | `data/FilesHelper.kt` | DOM parse of `strings.xml` (strings, string-array items, plurals items; inner-XML values); merges translations into target XML; atomic write that throws on failure |
 
 **Module discovery:** `FolderExtractor.extractModules(path)` — if `path` is itself a res folder (has `values/`) it is one module; otherwise `path` is treated as a project root and every `res/` folder beneath it with a `values/strings.xml` is discovered as its own module (skipping `build/`, `.gradle/`, `.git/`, `.idea/`, `node_modules/`, `intermediates/`). Each module is then extracted via `getKeyWithStringsFromFolder`.
 
-**Read path:** `FolderExtractor.extractModules(path)` → per module `getKeyWithStringsFromFolder(resPath)` → `FilesHelper.parseXml(file)` → `ExtractionResult` (wrapped in `ModuleExtraction`)
+**Read path:** `FolderExtractor.extractModules(path)` → per module `getKeyWithStringsFromFolder(resPath)` → `FilesHelper.parseXml(content)` → `ExtractionResult` (wrapped in `ModuleExtraction`)
 
 **Write path:** `FilesHelper.mergeEntriesIntoXml(existingXml, translatedPairs)` → `FilesHelper.writeXmlToFile(xml, file)` (merges into the existing target DOM, preserving arrays/plurals/comments/non-translatable strings)
 
@@ -31,7 +31,7 @@ No database or cache. Almost all data is in-memory and lost on close — the one
 | translate_a/single | `TranslatorApi2Impl` | `https://translate.google.com/translate_a/single?client=gtx&sl=en&tl=XX&q=TEXT&dt=t` (JSON) |
 | clients4 dict-chrome | `TranslatorApi3Impl` | `https://clients4.google.com/translate_a/t?client=dict-chrome-ex&sl=en&tl=XX&q=TEXT` (JSON) |
 
-All requests are HTTP GET. `NetworkClient` uses Ktor CIO engine with 90-second connect/request/socket timeouts.
+All requests are HTTP GET. `NetworkClient` uses Ktor CIO engine with 90-second connect/request/socket timeouts, and returns `Failure("HTTP <code> …")` for any non-2xx response instead of passing the body on as success.
 
 ### 3. Language Templates (user home)
 
@@ -45,8 +45,8 @@ All requests are HTTP GET. `NetworkClient` uses Ktor CIO engine with 90-second c
 |-------|----------|---------|
 | `LanguageModel` | `domain/model/LanguagesModel.kt` | Language entry: `langName`, `nativeName`, `langCode`, `onlyWebTranslate` |
 | `HomeScreenState` | `home_screen/HomeScreenState.kt` | All UI state |
-| `TranslationResult` | `data/model/TranslationResult.kt` | Sealed: `Idle`, `UpdateProgress`, `TranslationCompleted`, `TranslationFailed` |
-| `FileXmlData` | `data/FilesHelper.kt` | Parsed XML: `contents`, `keyValuePairs: Map<String, String>`, `languageCode` |
+| `TranslationResult` | `data/model/TranslationResult.kt` | Sealed: `Idle`, `UpdateProgress`, `TranslationCompleted(translatedKeys, failedKeys, issues)`, `TranslationFailed` |
+| `FileXmlData` | `data/FilesHelper.kt` | Parsed XML: `contents`, `keyValuePairs: Map<String, String>` (keys: `name`, `array:<name>:<i>`, `plurals:<name>:<quantity>`; values: inner XML), `languageCode` |
 | `ExtractionResult` | `data/util/FolderExtractor.kt` | `selectedLangs`, `extractedFiles: Map<String, String>`, `changeFileCodes: Map<String, String>` (per res folder) |
 | `ModuleExtraction` | `data/util/FolderExtractor.kt` | One discovered module: `moduleName`, `resPath` (output dir), `extraction: ExtractionResult`, `baseStringCount` |
 | `ModuleSelection` | `home_screen/HomeScreenState.kt` | UI row for a discovered module: `name`, `resPath`, `stringCount`, `selected` |
@@ -70,13 +70,15 @@ User clicks Start → HomeScreenViewModel.translate()
      For each language (sequential):
       → Compute missing keys (englishKeys - langKeys)
       → For each missing key (translateKeyOrNull, Semaphore(8), retry x3):
-          → LocalizationUtils.sanitizeForTranslation()
-          → MyTranslatorRepoImpl.getTranslation() [API rotation]
-            → NetworkClient.makeStringNetworkRequest() → Google Translate API
-          → LocalizationUtils.restoreAfterTranslation()
-          (on failure: skip this key, continue — no run abort)
+          → TranslationRepository.getTranslation()  (MyTranslatorRepoImpl)
+            → LocalizationUtils.sanitizeForTranslation()  (once; no prose ⇒ return verbatim, no request)
+            → [API rotation] NetworkClient.makeStringNetworkRequest() → Google Translate API
+            → LocalizationUtils.restoreAfterTranslation()  (null = damaged ⇒ try next endpoint)
+          (on failure: skip this key, count it failed, continue — no run abort)
+      → drop incomplete array/plurals groups; reject 'unchanged' output
       → FilesHelper.mergeEntriesIntoXml(existingXml, translatedPairs)  [partial OK]
       → FilesHelper.writeXmlToFile() → File System
       → emit UpdateProgress
-  → emit TranslationCompleted / TranslationFailed
+  → emit TranslationCompleted(translated, failed, issues) / TranslationFailed
+  → ViewModel re-reads the modules from disk (so the next run only translates what is missing)
 ```

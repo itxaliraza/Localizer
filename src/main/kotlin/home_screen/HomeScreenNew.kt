@@ -38,6 +38,10 @@ import theme.GreenColor
 import theme.LightPrimary
 import theme.PrimaryColor
 import theme.ScreenColor
+import theme.WarningColor
+
+// Max per-unit issue lines listed in the completion summary before collapsing to "… and N more".
+private const val MAX_SHOWN_ISSUES = 6
 
 @Composable
 fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
@@ -222,21 +226,63 @@ fun HomeScreenNew(viewModel: HomeScreenViewModel = koinInject()) {
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         when (val result = state.translationResult) {
-                            TranslationResult.TranslationCompleted -> {
-                                RoundedCard(
-                                    modifier = Modifier.fillMaxWidth().padding(5.dp),
-                                    bgColor = ScreenColor,
-                                    clickEnable = true,
-                                    onClick = { openDownloadsFolder(state.folderPath) }
-                                ) {
-                                    Text(
-                                        text = "Translation Completed, Open Now",
-                                        color = Color.White,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
+                            is TranslationResult.TranslationCompleted -> {
+                                // "Completed" only means the run wasn't aborted. Failed strings and
+                                // unwritable files must be visible, otherwise offline looks like success.
+                                if (result.hasProblems) {
+                                    val nothingTranslated = result.translatedKeys == 0
+                                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
+                                        Text(
+                                            text = if (nothingTranslated)
+                                                "Nothing was translated — ${result.failedKeys} string(s) failed"
+                                            else
+                                                "Completed with problems: ${result.translatedKeys} translated, ${result.failedKeys} failed",
+                                            color = WarningColor,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                        )
+                                        result.issues.take(MAX_SHOWN_ISSUES).forEach { issue ->
+                                            Text(text = "• $issue", color = Color.White, fontSize = 11.sp)
+                                        }
+                                        if (result.issues.size > MAX_SHOWN_ISSUES) {
+                                            Text(
+                                                text = "… and ${result.issues.size - MAX_SHOWN_ISSUES} more",
+                                                color = Color.White, fontSize = 11.sp
+                                            )
+                                        }
+                                    }
+                                    RoundedCard(
+                                        modifier = Modifier.fillMaxWidth().padding(5.dp),
+                                        bgColor = ScreenColor,
+                                        clickEnable = canTranslateFile,
+                                        onClick = { viewModel.translate() }
+                                    ) {
+                                        Text(
+                                            text = "Retry failed strings",
+                                            color = Color.White,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                }
+                                if (result.translatedKeys > 0 || !result.hasProblems) {
+                                    RoundedCard(
+                                        modifier = Modifier.fillMaxWidth().padding(5.dp),
+                                        bgColor = ScreenColor,
+                                        clickEnable = true,
+                                        onClick = { openDownloadsFolder(state.folderPath) }
+                                    ) {
+                                        Text(
+                                            text = if (result.hasProblems) "Open Folder" else "Translation Completed, Open Now",
+                                            color = Color.White,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
                                 }
                             }
 

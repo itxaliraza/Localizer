@@ -6,7 +6,7 @@ Resolves a user-supplied path into one or more translatable Android modules. The
 
 ## Key files
 
-- `src/main/kotlin/data/util/FolderExtractor.kt` — `extractModules(path)`: suspend fun, resolves res folder vs project root, returns `List<ModuleExtraction>` (each carrying a `baseStringCount` parsed from the module's `values/strings.xml`); `getKeyWithStringsFromFolder(resPath)`: walks a single res folder, creates missing `strings.xml`, maps language codes, returns `ExtractionResult`
+- `src/main/kotlin/data/util/FolderExtractor.kt` — `extractModules(path)`: suspend fun, resolves res folder vs project root, returns `List<ModuleExtraction>` (each carrying a `baseStringCount` — translatable entries incl. array/plurals items — parsed from the module's `values/strings.xml`); `getKeyWithStringsFromFolder(resPath)`: walks a single res folder, keeps only `FilesHelper.isLanguageFolder` folders, maps language codes, returns `ExtractionResult`. **Read-only: never writes into the project.**
 - `src/main/kotlin/data/FilesHelper.kt` — `parseXml(file)`: DOM parse of a single `strings.xml`; `extractLanguageCode(folderName)`: regex to strip `values-` prefix; `getFilesXmlContents(files)`: batch parse
 - `src/main/kotlin/home_screen/HomeScreenViewModel.kt` — `loadFileFromPath(path)`: launches IO coroutine, calls `FolderExtractor.extractModules`, emits one-time event, caches `List<ModuleExtraction>`, surfaces module names in state
 
@@ -28,12 +28,15 @@ Resolves a user-supplied path into one or more translatable Android modules. The
 
 ## Consumers
 
-- `src/main/kotlin/home_screen/HomeScreenViewModel.kt` — calls `FolderExtractor.extractModules`; stores `List<ModuleExtraction>`; passes it to `TranslationManager.translate()`
+- `src/main/kotlin/home_screen/HomeScreenViewModel.kt` — calls `FolderExtractor.extractModules` (on load, and again after each run via `refreshModules()`); stores `List<ModuleExtraction>`; passes it to `TranslationManager.translate()`
+- `src/test/kotlin/data/util/FolderExtractorTest.kt` — proves load writes nothing and filters qualifier folders
 - `src/main/kotlin/home_screen/HomeScreenNew.kt` — triggers `loadFileFromPath()`, observes one-time events for snackbar, displays `loadedPath` and `discoveredModules` from state
 
 ## Notes
 
-- If a `values-<lang>/` folder exists but has no `strings.xml`, `FolderExtractor` creates an empty one before parsing.
+- If a `values-<lang>/` folder exists but has no `strings.xml`, its language is still detected/pre-selected: the file is modelled **in memory** as `FilesHelper.EMPTY_STRINGS_XML` and only written to disk when a translation is written. (It used to create an empty `strings.xml` on load — and in *every* `values*` folder incl. `values-night`/`values-v29`, polluting the user's repo before they had chosen anything.)
+- Only `values` and real language folders are read (`FilesHelper.isLanguageFolder`); `values-night`, `values-v29`, `values-sw600dp`, `values-fr-night`, `values-en*` are ignored.
+- `extractedFiles` keys are `"<folder>/strings.xml"` (built from the folder name, no longer from Windows path splitting).
 - The `values/` folder (English base) is included in the extraction; it provides the reference key set for detecting missing translations.
 - A module is only discovered if its `values/strings.xml` base file exists, so res folders without strings are ignored.
 - Backward compatible: pointing the app directly at a single `res/` folder still works (it becomes a one-element module list).

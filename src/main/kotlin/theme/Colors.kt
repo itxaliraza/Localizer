@@ -10,6 +10,7 @@ val ScreenColor = Color(0xFF16404D)
 val RedColor = Color(0xffe13d3d)
 val LightPrimary = Color(0xff28515e)
 val GreenColor = Color(0xb363e125)
+val WarningColor = Color(0xffffb74d)
 val LightColors = lightColors(
     primary = PrimaryColor,
     onPrimary = Color.White,

@@ -1,10 +1,9 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 plugins {
     kotlin("jvm")
-    id("org.jetbrains.compose") version "1.8.0-beta01"
+    id("org.jetbrains.compose")
     id("org.jetbrains.kotlin.plugin.compose")
-    kotlin("plugin.serialization") version "2.0.0"
-
+    kotlin("plugin.serialization")
 }
 
 group = "com.example"
@@ -25,25 +24,34 @@ dependencies {
     // With compose.desktop.common you will also lose @Preview functionality
     implementation(compose.desktop.currentOs)
 
-    implementation("io.ktor:ktor-client-cio:2.3.12")
+    implementation("io.ktor:ktor-client-cio:3.6.0")
     implementation(compose.components.resources)
     implementation(compose.material3)
     implementation(compose.ui)
     implementation(compose.material)
+    // Compose 1.8+ no longer bundles the icons; 1.7.3 is the final published version of the core set
+    implementation("org.jetbrains.compose.material:material-icons-core:1.7.3")
 
-    implementation("org.slf4j:slf4j-api:2.0.9") // SLF4J API
-    implementation("ch.qos.logback:logback-classic:1.4.11")
+    implementation("org.slf4j:slf4j-api:2.0.19") // SLF4J API
+    implementation("ch.qos.logback:logback-classic:1.6.3")
 
-    implementation("io.insert-koin:koin-compose:4.0.0-RC2")
+    implementation("io.insert-koin:koin-compose:4.2.2")
 
-    implementation("io.ktor:ktor-client-content-negotiation:2.3.4")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.4")
+    implementation("io.ktor:ktor-client-content-negotiation:3.6.0")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:3.6.0")
     // Kotlin serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
 
-    implementation("org.json:json:20210307")
-    implementation("com.github.junrar:junrar:7.5.5")
+    implementation("org.json:json:20260814")
+    implementation("com.github.junrar:junrar:8.1.1")
 
+    testImplementation(kotlin("test"))
+    // Gradle 9 no longer auto-supplies the JUnit launcher
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 compose.desktop {
@@ -52,6 +60,10 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Exe)
+            // Runtime modules Compose's `suggestRuntimeModules` reports as referenced by the dependencies
+            // (the trimmed jlink image otherwise omits them). A real Ktor request works without them in
+            // testing, so this is precautionary, not a fix for an observed failure.
+            modules("java.instrument", "java.management", "jdk.unsupported")
             packageName = "Fast Localizer"
             packageVersion = "5.0.0"
             windows {

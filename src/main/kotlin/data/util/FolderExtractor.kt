@@ -88,25 +88,17 @@ object FolderExtractor {
             val folder = File(folderPath)
 
             if (folder.exists() && folder.isDirectory) {
-                folder.listFiles()?.forEach { valueFolder ->
-                    if (valueFolder.isDirectory && valueFolder.name.startsWith("values")) {
-                        val stringsFile = File(valueFolder, "strings.xml")
+                folder.listFiles()?.sortedBy { it.name }?.forEach { valueFolder ->
+                    // Only `values` and real language folders. Other qualifiers (values-night, values-v29,
+                    // values-sw600dp, …) are not languages and are left completely alone.
+                    if (!valueFolder.isDirectory || !FilesHelper.isLanguageFolder(valueFolder.name)) return@forEach
 
-                        // If strings.xml doesn't exist, create it with default structure
-                        if (!stringsFile.exists()) {
-                            val defaultContent = """<?xml version="1.0" encoding="utf-8"?>
-<resources>
-</resources>"""
-                            stringsFile.writeText(defaultContent)
-                            println("Created missing: ${stringsFile.path}")
-                        }
-
-                        // Add it to extractedFiles
-                        val content = stringsFile.readText()
-                        val relativePath = stringsFile.absolutePath.substringAfter(folderPath)
-                        extractedFiles[relativePath.substringAfter("\\").replace("\\", "/")] =
-                            content
-                    }
+                    // A language folder without strings.xml still counts (its language is pre-selected),
+                    // but it is modelled as an empty file in memory: loading must never write into the
+                    // user's project. The file is created when a translation is actually written.
+                    val stringsFile = File(valueFolder, "strings.xml")
+                    val content = if (stringsFile.isFile) stringsFile.readText() else FilesHelper.EMPTY_STRINGS_XML
+                    extractedFiles["${valueFolder.name}/strings.xml"] = content
                 }
             }
 

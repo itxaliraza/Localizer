@@ -1,6 +1,7 @@
 package data.translator.apis
 
 import data.network.client.NetworkClient
+import data.network.client.NetworkClient.snippet
 import data.network.client.RequestTypes
 import data.network.NetworkResponse
 import data.network.doIfSuccessOrFailure
@@ -8,6 +9,7 @@ import data.translator.api_interface.TranslatorApis
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
+import org.json.JSONException
 import java.net.URLEncoder
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -30,8 +32,6 @@ class TranslatorApi3Impl : TranslatorApis {
             val text = NetworkClient.makeStringNetworkRequest(
                 url = translationUrl, requestType = RequestTypes.Get
             )
-//
-            println("texttt=${text.data},${text.error}")
             text.doIfSuccessOrFailure(mCallback = {
                 val result = getTranslationData(it!!)
                 return@withContext (NetworkResponse.Success(result))
@@ -54,14 +54,10 @@ class TranslatorApi3Impl : TranslatorApis {
 
     private fun getTranslationData(to_translate: String): String {
         try {
-            // Parse the JSON array string
-            val jsonArray = JSONArray(to_translate)
-
-            // Get the value at the specified index
-            return jsonArray.optString(0)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            throw e
+            return JSONArray(to_translate).optString(0)
+        } catch (e: JSONException) {
+            // Say what came back: usually an HTML block page, not a translation.
+            throw Exception("Api3 error: not a JSON translation (${to_translate.snippet()})")
         }
     }
 }
