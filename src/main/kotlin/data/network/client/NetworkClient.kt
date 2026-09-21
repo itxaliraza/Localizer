@@ -12,6 +12,7 @@ import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
+import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 
@@ -37,6 +38,10 @@ object NetworkClient {
         return this.replace("htt", "")
     }
 
+    /** First ~80 characters of a response body on one line, for error messages. */
+    fun String.snippet(max: Int = 80): String =
+        replace(Regex("\\s+"), " ").trim().let { if (it.length > max) it.take(max) + "…" else it }
+
 
     suspend inline fun makeStringNetworkRequest(
         url: String,
@@ -45,7 +50,7 @@ object NetworkClient {
     ): NetworkResponse<String> {
         return try {
 //            println("hitting =${url}")
-            val response: String = requestType.getHttpBuilder(url) {
+            val httpResponse = requestType.getHttpBuilder(url) {
                 if (requestType is RequestTypes.Post) {
                     it.setBody(requestType.body)
                 }
@@ -54,15 +59,21 @@ object NetworkClient {
                         it.header(key, value)
                     }
                 }
-             }.body()
+             }
+            val response: String = httpResponse.body()
 
-            val newResponse: String = response
-            (NetworkResponse.Success(newResponse))
+            // Ktor does not throw on 4xx/5xx here, so without this check a rate-limit or captcha page (HTTP 429)
+            // is handed to the parsers as if it were a translation and fails with a confusing parse error.
+            if (!httpResponse.status.isSuccess()) {
+                NetworkResponse.Failure("HTTP ${httpResponse.status.value} ${httpResponse.status.description}: ${response.snippet()}")
+            } else {
+                NetworkResponse.Success(response)
+            }
 
         } catch (e: ClientRequestException) {
-            (NetworkResponse.Failure(e.message ?: "Client request error"))
+            (NetworkResponse.Failure(e.message))
         } catch (e: ServerResponseException) {
-            (NetworkResponse.Failure(e.message ?: "Server response error"))
+            (NetworkResponse.Failure(e.message))
         } catch (e: Exception) {
             (NetworkResponse.Failure(e.message ?: "No Internet"))
         } finally {

@@ -4,6 +4,120 @@ Append-only. One entry per change session. Format: `## YYYY-MM-DD — <summary>`
 
 ---
 
+## 2026-09-20 — Ship check: real block is HTTP 429 on API2; status check, scraper out of the rotation, escalating cool-down
+
+**Reported:** a new real-run log: 8× `A JSONArray text must start with '['` at the start, `Api1 error: translation container not found` at `api 0` while API3 was translating, and the question "check and verify so I can ship".
+
+**Findings**
+- The 8 JSON errors were **HTTP 429** pages. `NetworkClient` ignored the status, so the block page reached the JSON parser as "success" text and only org.json's parse message survived. Reproduced: in a JVM, `translate_a/single` returns 429 on **both** `translate.google.com` and `translate.googleapis.com`, from Ktor and from the JDK's own client, with any User-Agent/Accept header, while Python gets 200 from the same IP. `clients4` (API3) works. See [features/translation-api.md](features/translation-api.md).
+- The scraper was in the endpoint **rotation** (contrary to what this wiki said): each time its cool-down expired it got one request in three, so a blocked host kept being hit while the JSON endpoints were fine. That is the `Api1 error` at `api 0`.
+
+**Fixes**
+- `NetworkClient`: a non-2xx status is a `Failure("HTTP 429 Too Many Requests: <snippet>")`; new `String.snippet()`.
+- `TranslatorApi2Impl` / `TranslatorApi3Impl`: parse failures say `ApiN error: not a JSON translation (<snippet>)`; API3's `println("texttt=…")` debug line removed.
+- `MyTranslatorRepoImpl`: only the two JSON endpoints rotate, the scraper is always last; the cool-down doubles per consecutive failed episode up to 10× and resets on success.
+- Tests: `NetworkClientTest` (local `HttpServer`: 200 / 429 / 503 / snippet), rotation and cool-down tests in `MyTranslatorRepoImplTest`. 95 pass, 1 skipped (live sweep).
+
+**Measured (live, real manager + real endpoints, temp test, deleted):** 24 languages (incl. az km om pa pt sv tk sr is hi am ar ja zh-CN tt ug or gu ky …) × 71 keys (placeholders, `<b>`/`<a>`, quotes, `&`, plural): **1704 translated, 0 failed, 0 issues, all 24 files complete, 262 s.** API2 0/25 ok (429), API3 1720/1720 ok. Not tested: the full ~130 languages × ~69 keys.
+
+**Housekeeping:** the temp scale test was committed by mistake in `bb889de` (the user committed while it existed); it is deleted in the working tree and needs a commit.
+
+**Files touched:** `src/main/kotlin/data/network/client/NetworkClient.kt`, `src/main/kotlin/data/translator/apis/TranslatorApi2Impl.kt`, `TranslatorApi3Impl.kt`, `src/main/kotlin/data/translator/MyTranslatorRepoImpl.kt`, `src/test/kotlin/data/network/NetworkClientTest.kt`, `src/test/kotlin/data/translator/MyTranslatorRepoImplTest.kt`; wiki: `features/translation-api.md`, `infra/data.md`, `infra/build.md`, `log.md`.
+
+---
+
+## 2026-09-20 — "Translation still failed": web-only languages routed through the blocked scraper; route via JSON, add endpoint cool-down
+
+**Reported:** a second real-run log — az and km still failing on every string ("translation container not found").
+
+**What the log confirmed:** the earlier fixes work — one "Trying…" line per attempt (was four) and the breaker stopped az/km after ~8 strings instead of all 69. The remaining failure is Google's captcha block on the HTML scraper (`/m` → 302 → `google.com/sorry/index`, still active).
+
+**Root cause of the *languages* failing:** 116 languages were flagged `onlyWebTranslate` and routed **only** to that scraper, so a block meant they could not be translated at all. Probed live one request at a time, **the JSON endpoints translate 115 of those 116** (az, km, om, pa, pt, sv, tk, … all fine, also with token-bearing strings); only `itg` returns the source unchanged. **I had told you (and written in the wiki) that the JSON endpoint rejects those codes — that was wrong.** It came from one transient failure during a 4-thread sweep that I misread as "unsupported".
+
+**Fix (`MyTranslatorRepoImpl`):**
+- All languages use the same list: JSON endpoints first, scraper last. `onlyWebTranslate` is now informational.
+- Endpoint cool-down (60 s): an endpoint whose request failed is tried last until it recovers. Before, the rotation started **a third of all requests** at the blocked scraper, failed, then fell back — extra traffic to the endpoint that was blocking us. If every endpoint is cooling, all are still tried.
+- Tests: replaced the "web-only uses only the scraper" test (it asserted the removed behaviour), added web-only-via-JSON, scraper-fallback, and three cool-down tests with a fake clock (86 pass).
+
+**Measured (live, real code path, real routing):** `LiveLanguageSweepTest` — **242/242 languages pass**, 126 JSON-endpoint + **116 web-only** (2.5 min). 7 needed a fallback token style: dz, new, or, ty, tt, sah (`%n%`); ug (all four). The sweep checks placeholder/markup integrity, not translation quality.
+
+**Files touched:** `src/main/kotlin/data/translator/MyTranslatorRepoImpl.kt`, `src/test/kotlin/data/translator/MyTranslatorRepoImplTest.kt`, `src/test/kotlin/data/translator/LiveLanguageSweepTest.kt`; wiki: `features/translation-api.md`, `features/string-sanitization.md`, `features/language-selection.md`, `screens/languages-screen.md`, `infra/build.md`, `log.md`.
+
+---
+
+## 2026-09-20 — Real-run log review: fix 4× request amplification, add circuit breaker, confirm the scraper block
+
+**Reviewed:** a console log from a real run over ~130 language folders. Findings:
+
+1. **Extraction is right.** Only `values` + real language folders were read (`values-in`, `-iw`, `-ji`, `-zh` legacy codes included); no configuration-qualifier folders. The `????` in the printed `LanguageModel` names is the Windows console code page (the strings are correct in memory) — display-only, not a data problem. (The `println` debug output itself is noise; not removed.)
+2. **Web-only languages (az, km, om, …) fail with "translation container not found" — verified cause: Google's captcha block, not a markup change.** `curl` of the scraper URL returns `HTTP 302 → https://www.google.com/sorry/index?continue=…` while `translate_a/single` returns 200 from the same machine. IP-level, temporary; triggered by heavy testing here.
+3. **Bug of mine, found in the log: 4 requests per failed request.** The new token-style ladder also advanced to the next style when a *request* failed, so every failure was sent 4× (12 per string for normal languages incl. retries) — four "Trying translation api 0 error" lines per "attempt N failed". Against a blocked endpoint that made the block worse. Reproduced with a failing test (`expected 1 but was 4`, `[4,4,4]`), then fixed: a style is only retried when an endpoint *answered* with a damaged result; if nothing answered, `MyTranslatorRepoImpl` returns at once.
+4. **The app ground through everything while blocked** (every string of every language × 3 attempts). Added a circuit breaker in `TranslationManager`: a language stops after 6 fully-retried failures with no success; 3 blocked languages in a row stop the run with a "Stopped early … press Retry later" issue. A single success disables it for that language, one working language resets the run counter. Mutation-checked: the two breaker tests fail with the breaker disabled.
+
+**Tests:** 82 pass (added 2 repo tests, 4 manager tests; manager suite is faster via the injectable back-off).
+
+**Not verified at the time:** the 116 web-only languages. (Resolved in the entry above this one.)
+
+**Files touched:** `src/main/kotlin/data/translator/MyTranslatorRepoImpl.kt`, `src/main/kotlin/data/translator/TranslationManager.kt`, `src/test/kotlin/data/translator/MyTranslatorRepoImplTest.kt`, `src/test/kotlin/data/translator/TranslationManagerTest.kt`; wiki: `features/translation-api.md`, `features/translation-orchestration.md`, `features/string-sanitization.md`, `infra/build.md`, `log.md`.
+
+---
+
+## 2026-09-20 — Fix placeholder corruption in Serbian/Icelandic (and Hindi/Amharic): letter-free tokens + style ladder
+
+**Reported:** in some languages `%1$d` came back as `КСКСПХ1_дКСКС` (Serbian) and `%2$d` as `XXH2_dXX` (Icelandic).
+
+**Cause:** the sanitizer swapped placeholders for letter-based tokens (`XXPH1_dXX`). Google transliterates or truncates letters per language. The earlier rewrite (`XXPH1XX`) did **not** fix it — reproduced live: Serbian `КСКСПХ0КСКС`, Icelandic `XXH0XX`; Hindi and Amharic also broke. The validation added earlier stopped corrupt strings being written, but those languages' strings would simply have failed every time.
+
+**Fix:**
+- Tokens are now **letter-free**: `@n@` (digits and symbols aren't transliterated). Token regex accepts digits in any script.
+- Because no single style survives every language (Google sometimes drops a token next to a word it deletes, e.g. "now" in Tatar/Uyghur/Odia), `LocalizationUtils.TokenStyle` is a **ladder** `@n@ → %n%  → [[n]] → ⟦n⟧`; `MyTranslatorRepoImpl` retries a *damaged* response with the next style on the same endpoint, and moves to the next endpoint only when a *request* fails.
+- New opt-in `LiveLanguageSweepTest` (`LIVE_SWEEP=1`) that runs every language through the real code path.
+- Tests updated/added (76 pass): style round-trips, no letters in tokens, non-Latin digits, sr/is outputs, ladder behaviour.
+
+**Measured (live, real code path):**
+- 21 hard-script languages, old `XXPH` format: 4 failed (sr, is, hi, am). `@n@`, `%n%`, `[[n]]`, `<n>`, `⟦n⟧` all 21/21.
+- **126 of 126 languages served by the JSON endpoints pass on both test strings** (`%1$d`/`%2$d` sentence, and `<b>…</b>` + `%1$s` with "now, please"). Alone, `[[n]]` failed 6 (gu, ky, or, tt, ug, yo), `@n@` failed 1 (tt), `%n%` failed 1 (ug). With the ladder: `or`, `tt` needed `%n%`; `ug` needed `⟦n⟧`.
+- **NOT verified: the 116 web-only languages.** Google returned HTTP 429 for the HTML scraper (`/m`) from this machine during testing, and I believed the JSON endpoint rejected those language codes. **That belief was wrong** — see the 2026-09-20 "web-only languages" entry above, which re-ran them and got 116/116.
+
+**Files touched:** `src/main/kotlin/data/util/LocalizationUtils.kt`, `src/main/kotlin/data/translator/MyTranslatorRepoImpl.kt`, `src/test/kotlin/data/util/LocalizationUtilsTest.kt`, `src/test/kotlin/data/translator/MyTranslatorRepoImplTest.kt`, `src/test/kotlin/data/translator/LiveLanguageSweepTest.kt` (new); wiki: `features/string-sanitization.md`, `features/translation-api.md`, `infra/build.md`, `log.md`.
+
+---
+
+## 2026-09-20 — Translation-correctness pass: failure reporting, read-only load, Koin start, packaging check, markup/arrays/plurals, tests
+
+**What changed:** Fixed the issues found in the review, in this order.
+
+1. **Failures no longer look like success.** `TranslationCompleted` is now `TranslationCompleted(translatedKeys, failedKeys, issues)`. `TranslationManager` aggregates a per-(module, language) `UnitOutcome`; write/merge errors are caught per language (run continues) and `FilesHelper.writeXmlToFile` now **throws** instead of swallowing. The UI shows an amber "Nothing was translated / Completed with problems" summary with issue lines and a **Retry failed strings** button. After every run (finished/failed/cancelled) the ViewModel re-reads the modules from disk so a retry only translates what is still missing (was: re-translated everything from the load-time snapshot). ViewModel also now uses one `SupervisorJob` scope, cancels a superseded load, and ignores `translate()` while a run is active.
+2. **Loading no longer writes into the project.** `FolderExtractor` used to create an empty `strings.xml` in *every* `values*` folder (incl. `values-night`, `values-v29`). It is now read-only, reads only `values` + real language folders (`FilesHelper.isLanguageFolder`), and models a missing language `strings.xml` in memory.
+3. **`startKoin` moved out of the `App()` composable into `main()`** (a recomposition would have thrown "Koin already started").
+4. **Packaging verified.** `createDistributable`, the launched app and `packageExe` (installer built) all work. Added `modules("java.instrument","java.management","jdk.unsupported")` (Compose `suggestRuntimeModules`); a real Ktor request also worked without them in a matching jlink image, so it is precautionary.
+5. **Markup & placeholders (#3).** `parseXml` keeps inner XML instead of `textContent`. `LocalizationUtils` rewritten: tags/CDATA/comments and all printf/`{name}` placeholders become numbered tokens (with anti-gluing padding); `restoreAfterTranslation` returns `null` if a token is lost/duplicated/invented or reordering leaves malformed markup, and `MyTranslatorRepoImpl` then tries the next endpoint. Values with no prose (or `@string/x` refs) skip the network. Live-checked against Google: tokens survived 43/44 samples over 15 languages; the miss is what the validation rejects.
+6. **Arrays and plurals (#4).** `<string-array>` and `<plurals>` items are parsed (keys `array:<n>:<i>`, `plurals:<n>:<q>`), translated, and merged; a group with any failed item is dropped whole so an array is never written misaligned. `mergeEntriesIntoXml` now uses a deterministic serializer (`serializeResources`) instead of the JDK `Transformer` (which corrupted whitespace in mixed-content strings), keeps whitespace inside `<string>`, adds `xmlns:xliff` when needed, and writes atomically.
+7. **Bad results are not written as translations (#5).** Blank/null results are failures; ≥3 translatable strings all identical to the source ⇒ language treated as unsupported (Google returns 200 + source for unknown codes) and not written.
+8. **Testability.** New `TranslationRepository` interface (Koin: `factory<TranslationRepository> { MyTranslatorRepoImpl(...) }`), `MyTranslatorRepoImpl` takes `TranslatorApis`; `TranslationManager` takes the repo interface and no longer keeps `mParallelTranslation`/`mChangeFileCodes` as mutable fields.
+9. **Tests:** added JUnit 5 setup and 69 tests (`LocalizationUtilsTest`, `FilesHelperTest`, `FolderExtractorTest`, `MyTranslatorRepoImplTest`, `TranslationManagerTest`) — all pass.
+
+**Known limits (documented in the wiki):** inline-tag *placement* is best-effort (translator may move words out of a tag; valid XML, lost emphasis); plurals aren't adapted to each language's quantity set; XXE hardening of the DOM parser not done; endpoints are unofficial and can be rate-limited (an HTML "Sorry…" page is treated as an endpoint failure).
+
+**Files touched:** `build.gradle.kts`, `src/main/kotlin/Main.kt`, `di/SharedModule.kt`, `data/FilesHelper.kt`, `data/model/TranslationResult.kt`, `data/translator/{TranslationManager,MyTranslatorRepoImpl,TranslationRepository}.kt`, `data/util/{LocalizationUtils,FolderExtractor}.kt`, `home_screen/{HomeScreenViewModel,HomeScreenNew}.kt`, `theme/Colors.kt`, `src/test/kotlin/**` (5 new test classes); wiki: `index.md`, `architecture.md`, `screens/home-screen.md`, `features/{file-loading,translation-orchestration,translation-api,string-sanitization,xml-parsing-writing,parallel-translation,translation-cancellation,progress-reporting}.md`, `infra/{build,di,data,navigation}.md`, `log.md`.
+
+---
+
+## 2026-09-20 — Upgrade all libraries/plugins to latest stable
+
+**What changed:** Bumped every dependency and plugin to its latest stable release (pre-releases skipped). Gradle wrapper was already 9.7.1.
+
+- Plugins: Kotlin 2.0.0 → 2.4.20, Compose Multiplatform 1.8.0-beta01 → 1.9.3 (the stale `1.6.10` in `gradle.properties` was previously overridden by a hardcoded version in `build.gradle.kts`). Versions now live only in `gradle.properties`; `settings.gradle.kts` also pins the Kotlin Serialization plugin to `kotlin.version`, and `build.gradle.kts` declares plugins without versions.
+- Libraries: Ktor 2.3.12/2.3.4 → 3.6.0, kotlinx-serialization-json 1.6.0 → 1.11.0, Koin 4.0.0-RC2 → 4.2.2, slf4j 2.0.9 → 2.0.19, logback 1.4.11 → 1.6.3, org.json 20210307 → 20260814, junrar 7.5.5 → 8.1.1.
+- Compose 1.8+ dropped bundled Material icons from the `compose.material` accessor → added explicit `material-icons-core:1.7.3`.
+- `NetworkClient`: removed now-redundant `?: "..."` fallbacks on `ClientRequestException`/`ServerResponseException` `.message` (non-null in Ktor 3).
+
+**Verified:** `compileKotlin` passes; `./gradlew run` launches with no startup errors. Not exercised: a live translation through Ktor 3 CIO (no automated tests exist).
+
+**Files touched:** `gradle.properties`, `settings.gradle.kts`, `build.gradle.kts`, `src/main/kotlin/data/network/client/NetworkClient.kt`, `wiki/index.md`, `wiki/infra/build.md`, `wiki/infra/di.md`, `wiki/features/translation-api.md`, `wiki/log.md`.
+
+---
+
 ## 2026-06-29 — Replace language import/export with in-app Language Templates
 
 **What changed:** Removed the JSON import/export-to-Downloads feature and replaced it with persistent, in-app **language templates**. Users save the current selection as a named set ("Save" pill, enabled only when ≥1 language is selected), apply a template in one click (replaces the selection), and delete with confirmation. The template matching the current selection is highlighted as **Active**. Templates persist to `~/.fast-localizer/templates.json` and load at startup, so selections survive restarts (the old export forgot everything and dumped a `.txt` into Downloads).

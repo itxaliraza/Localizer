@@ -27,7 +27,7 @@ main() [Main.kt]
 
 ## Entry Point
 
-`main()` function in `src/main/kotlin/Main.kt`. Creates the Compose `Window`, calls `startKoin`, renders `App()`.
+`main()` function in `src/main/kotlin/Main.kt`. Calls `startKoin` once, then creates the Compose `Window` and renders `App()`.
 
 ## Back Navigation
 

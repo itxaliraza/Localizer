@@ -6,7 +6,7 @@ Controls whether missing string keys within each language are translated concurr
 
 ## Key files
 
-- `src/main/kotlin/data/translator/TranslationManager.kt` — checks `parallelTranslation` flag inside `processTranslation()`; if true, wraps each key translation in `async {}` and calls `awaitAll()` then `filterNotNull()`; if false, uses a sequential `mapNotNull {}` with suspension. Either path goes through `translateKeyOrNull()`, which is bounded by a shared `Semaphore(8)` so even parallel mode never exceeds 8 concurrent requests.
+- `src/main/kotlin/data/translator/TranslationManager.kt` — checks the `parallelTranslation` parameter (passed down from `translate()`; no longer an instance field) inside `processTranslation()`; if true, wraps each key translation in `async {}` and calls `awaitAll()` then `filterNotNull()`; if false, uses a sequential `mapNotNull {}` with suspension. Either path goes through `translateKeyOrNull()`, which is bounded by a shared `Semaphore(8)` so even parallel mode never exceeds 8 concurrent requests.
 - `src/main/kotlin/home_screen/HomeScreenState.kt` — `parallelTranslation: Boolean = true` (default on)
 - `src/main/kotlin/home_screen/HomeScreenViewModel.kt` — `toggleParallel(checked: Boolean)`: updates state flag
 

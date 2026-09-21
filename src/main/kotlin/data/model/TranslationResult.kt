@@ -14,6 +14,19 @@ sealed interface TranslationResult {
         val translatedStrings:Int=0,
         val totalStrings:Int=0
     ):TranslationResult
-    data object TranslationCompleted:TranslationResult
+
+    /**
+     * The run finished without being aborted. This does NOT mean everything was translated: keys that
+     * failed on every endpoint are skipped, so [failedKeys] / [issues] must be surfaced to the user.
+     * [issues] are human-readable, one per (module, language) unit that had a problem.
+     */
+    data class TranslationCompleted(
+        val translatedKeys: Int = 0,
+        val failedKeys: Int = 0,
+        val issues: List<String> = emptyList(),
+    ) : TranslationResult {
+        val hasProblems: Boolean get() = failedKeys > 0 || issues.isNotEmpty()
+    }
+
     data class TranslationFailed(val exc:Exception):TranslationResult
 }

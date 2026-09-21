@@ -1,6 +1,7 @@
 package di
 
 import data.translator.MyTranslatorRepoImpl
+import data.translator.TranslationRepository
 import data.translator.apis.TranslatorApi1Impl
 import data.translator.apis.TranslatorApi2Impl
 import data.translator.apis.TranslatorApi3Impl
@@ -16,8 +17,8 @@ val SharedModule = module{
     single {
         TemplatesRepository()
     }
-    factory {
-        MyTranslatorRepoImpl(get(),get(),get())
+    factory<TranslationRepository> {
+        MyTranslatorRepoImpl(get<TranslatorApi1Impl>(), get<TranslatorApi2Impl>(), get<TranslatorApi3Impl>())
     }
     factory {
         TranslationManager(get())

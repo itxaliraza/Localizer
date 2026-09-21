@@ -6,7 +6,7 @@ Allows the user to stop an in-progress translation. Cancels the running coroutin
 
 ## Key files
 
-- `src/main/kotlin/home_screen/HomeScreenViewModel.kt` — `translationJob: Job?` field; `translate()` stores the launched coroutine as `translationJob`; `cancelTranslation()` calls `translationJob?.cancel()` and emits `TranslationFailed(Exception("Translation Cancelled"))`
+- `src/main/kotlin/home_screen/HomeScreenViewModel.kt` — `translationJob: Job?` field; `translate()` (ignored if `translationJob` is still active) stores the launched coroutine as `translationJob`; `cancelTranslation()` calls `translationJob?.cancel()` and emits `TranslationFailed(Exception("Translation Cancelled"))`. The run's `finally` block re-reads the modules from disk (`refreshModules()` under `NonCancellable`) so a cancelled run's partial output is visible to the next run
 - `src/main/kotlin/home_screen/HomeScreenNew.kt` — shows "Stop Translation" button when `translationResult is UpdateProgress`; onClick calls `viewModel.cancelTranslation()`
 
 ## State & data
@@ -26,4 +26,4 @@ Allows the user to stop an in-progress translation. Cancels the running coroutin
 ## Notes
 
 - Cancellation is cooperative: the coroutine is only cancelled at suspension points (e.g. network calls). Partially written XML files for the in-progress language may be left on disk incomplete.
-- After cancellation, the user must reload the folder or re-run translation to get complete output.
+- After cancellation just press Start again: the ViewModel re-reads the module files in `finally`, so only what is still missing is translated (no reload needed). Writes are atomic (temp file + move), so a file is either the old or the new version, never half-written.

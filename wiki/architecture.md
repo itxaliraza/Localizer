@@ -28,14 +28,14 @@ UI (Composables)
 - **Object utilities**: `FilesHelper`, `FolderExtractor`, `LocalizationUtils` are Kotlin `object`s (singletons with no injected dependencies). They are called directly, not injected.
 - **Koin factory scope**: All DI registrations are `factory` (new instance per injection point). The ViewModel is effectively a singleton because Koin is only asked for it once (at `koinInject()` call site in `HomeScreenNew`).
 - **No repository interface for files**: File I/O goes through `FolderExtractor` and `FilesHelper` objects directly — no interface abstraction.
-- **Translation API interface**: `TranslatorApis` interface exists so `MyTranslatorRepoImpl` can hold references to all three API impls polymorphically.
+- **Translation API interfaces**: `TranslatorApis` lets `MyTranslatorRepoImpl` hold the three API impls polymorphically; `TranslationRepository` lets `TranslationManager` be tested without the network. Both are faked in `src/test/kotlin`.
 
 ## Dependency Rules
 
 - UI layer (`home_screen/`, `languages_screen/`, `common_components/`, `Main.kt`) depends on `domain/model/` and the ViewModel. It does **not** import from `data/`.
 - `HomeScreenViewModel` depends on `TranslationManager`, `TemplatesRepository` (both Koin-injected), `FolderExtractor`, and `AvailableLanguages`.
-- `TranslationManager` depends on `MyTranslatorRepoImpl` and `FilesHelper`.
-- `MyTranslatorRepoImpl` depends on the three API impls and `LocalizationUtils`.
+- `TranslationManager` depends on the `TranslationRepository` interface (Koin binds `MyTranslatorRepoImpl`) and `FilesHelper`.
+- `MyTranslatorRepoImpl` depends on three `TranslatorApis` (the API impls) and `LocalizationUtils`.
 - `data/` has no dependency on `home_screen/` or `languages_screen/`.
 
 ## Key Architectural Constraints
