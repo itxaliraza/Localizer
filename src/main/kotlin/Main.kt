@@ -1,3 +1,5 @@
+import about_screen.AboutDialog
+import about_screen.AboutViewModel
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -36,6 +38,7 @@ import common_components.ImageButtons
 import di.SharedModule
 import home_screen.HomeScreenNew
 import org.jetbrains.compose.resources.painterResource
+import org.koin.compose.koinInject
 import org.koin.core.context.startKoin
 import theme.LightColors
 import theme.PrimaryColor
@@ -92,6 +95,8 @@ fun App(window: Window, exitApp: () -> Unit) {
 @Composable
 fun CustomTitleBar(window: Window, exitApp: () -> Unit) {
     var isMaximized by remember { mutableStateOf(false) }
+    var showAbout by remember { mutableStateOf(false) }
+    val aboutViewModel: AboutViewModel = koinInject()
     setupWindowDragging(window)
     val frame = window as? Frame
 
@@ -116,9 +121,7 @@ fun CustomTitleBar(window: Window, exitApp: () -> Unit) {
                 ImageButtons(
                     icon = Icons.Default.Info,
                     size = 30,
-                    onClick = {
-
-                    }
+                    onClick = { showAbout = true }
                 )
                 HorizontalSpacer(5)
                 // Minimize Button
@@ -155,6 +158,10 @@ fun CustomTitleBar(window: Window, exitApp: () -> Unit) {
             HorizontalDivider(thickness = 0.5.dp, color = Color.White.copy(alpha = 0.5f))
         }
 
+    }
+
+    if (showAbout) {
+        AboutDialog(viewModel = aboutViewModel, onDismiss = { showAbout = false })
     }
 }
 

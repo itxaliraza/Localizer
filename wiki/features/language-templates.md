@@ -8,8 +8,10 @@ Lets users save their current language selection as a named, reusable **template
 
 - `src/main/kotlin/data/model/LanguageTemplate.kt` — `@Serializable LanguageTemplate(id, name, langCodes)`; stores `langCode`s (not full models) for a small, resilient file
 - `src/main/kotlin/data/util/TemplatesRepository.kt` — Koin `single`; loads/saves the template list as pretty JSON at `~/.fast-localizer/templates.json`. Crash-safe: missing/corrupt file → empty list, write failures swallowed (templates are convenience data)
-- `src/main/kotlin/home_screen/components/TemplatesCard.kt` — the UI: header with contextual **Save** pill (enabled only when ≥1 language selected), template list (name, language count, code preview, Active highlight, Apply/Delete), the "Save as template" dialog, and the delete-confirm dialog
-- `src/main/kotlin/home_screen/HomeScreenViewModel.kt` — `createTemplate(name)`, `applyTemplate(template)`, `deleteTemplate(id)`; loads templates in `init`
+- `src/main/kotlin/home_screen/components/TemplatesCard.kt` — the UI: header with **Import** (secondary pill, opens [language-list-import.md](language-list-import.md)) and **Save** (primary pill, enabled only when ≥1 language selected), template list (name, language count, code preview, Active highlight with a ✓ Active badge, Apply as an accent `PillButton`, delete as an `IconActionButton` with tooltip), the "Save as template" dialog, and the delete-confirm dialog
+- `src/main/kotlin/common_components/Buttons.kt` — `PillButton` (Primary / Secondary / Accent styles, hover state) and `IconActionButton` (32dp, muted until hover, then red with a soft background; tooltip)
+- `src/main/kotlin/common_components/AppIcons.kt` — `Upload` and `DeleteOutline` vectors (not in `material-icons-core`)
+- `src/main/kotlin/home_screen/HomeScreenViewModel.kt` — `createTemplate(name, codes = current selection)`, `applyTemplate(template)` (delegates to `selectLanguagesByCode`), `deleteTemplate(id)`; loads templates in `init`
 - `src/main/kotlin/home_screen/HomeScreenState.kt` — `templates: List<LanguageTemplate>` state field
 
 ## State & data
@@ -25,7 +27,7 @@ Lets users save their current language selection as a named, reusable **template
 - `kotlinx-serialization-json` for JSON encode/decode
 - `TemplatesRepository` (Koin `single`, injected into `HomeScreenViewModel`)
 - `java.util.UUID` for template ids
-- Common components: `RectangleWithShadow`, `EditText`, `ImageButtons`, spacers; theme colors
+- Common components: `RectangleWithShadow`, `EditText`, `PillButton`, `IconActionButton`, `AppIcons`, spacers; theme colors (`MutedTextColor`)
 
 ## Consumers
 

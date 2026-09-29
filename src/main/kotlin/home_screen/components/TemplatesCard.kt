@@ -2,7 +2,6 @@ package home_screen.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -10,12 +9,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.ButtonDefaults
+import androidx.compose.material.Icon
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,22 +25,25 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import common_components.AppIcons
 import common_components.EditText
 import common_components.HorizontalSpacer
-import common_components.ImageButtons
+import common_components.IconActionButton
+import common_components.PillButton
+import common_components.PillStyle
 import common_components.VerticalSpacer
 import data.model.LanguageTemplate
 import home_screen.HomeScreenState
 import home_screen.HomeScreenViewModel
 import theme.GreenColor
-import theme.LightPrimary
+import theme.MutedTextColor
 import theme.PrimaryColor
 import theme.ScreenColor
 
 /**
- * In-app language templates: save the current selection as a named, reusable set and apply it
- * later in one click. Replaces the old import/export-to-JSON flow. Self-contained — owns its
- * "Save as template" and delete-confirm dialogs; talks to [viewModel] for persistence and reports
+ * In-app language templates: save the current selection as a named, reusable set, import one from a
+ * file or pasted list, and apply it later in one click. Self-contained — owns its "Save as template",
+ * import and delete-confirm dialogs; talks to [viewModel] for persistence and reports
  * user-facing outcomes through [onMessage] (rendered as a snackbar by the parent).
  */
 @Composable
@@ -50,6 +53,7 @@ fun TemplatesCard(
     onMessage: (String) -> Unit,
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
+    var showImportDialog by remember { mutableStateOf(false) }
     var templateToDelete by remember { mutableStateOf<LanguageTemplate?>(null) }
 
     val selectedCount = state.selectedLanguages.size
@@ -63,7 +67,7 @@ fun TemplatesCard(
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp)) {
 
-            // Header: title + contextual "Save" action (enabled only when languages are selected).
+            // Header: title + Import (always available) and Save (enabled only when languages are selected).
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -77,11 +81,20 @@ fun TemplatesCard(
                     )
                     Text(
                         text = "Reusable sets of languages",
-                        color = Color(0xff7fa6b0),
+                        color = MutedTextColor,
                         fontSize = 11.sp,
                     )
                 }
-                SavePill(
+                PillButton(
+                    text = "Import",
+                    icon = AppIcons.Upload,
+                    style = PillStyle.Secondary,
+                    onClick = { showImportDialog = true }
+                )
+                HorizontalSpacer(8)
+                PillButton(
+                    text = "Save",
+                    icon = Icons.Default.Add,
                     enabled = selectedCount > 0,
                     onClick = { showCreateDialog = true }
                 )
@@ -127,6 +140,24 @@ fun TemplatesCard(
         )
     }
 
+    if (showImportDialog) {
+        ImportLanguagesDialog(
+            viewModel = viewModel,
+            defaultName = "Imported list",
+            onDismiss = { showImportDialog = false },
+            onSelect = { codes ->
+                viewModel.selectLanguagesByCode(codes)
+                showImportDialog = false
+                onMessage("Selected ${codes.size} imported languages")
+            },
+            onSaveTemplate = { name, codes ->
+                viewModel.createTemplate(name, codes)
+                showImportDialog = false
+                onMessage("Saved template “$name” — ${codes.size} languages")
+            }
+        )
+    }
+
     templateToDelete?.let { target ->
         ConfirmDeleteDialog(
             templateName = target.name,
@@ -136,32 +167,6 @@ fun TemplatesCard(
                 templateToDelete = null
                 onMessage("Deleted “${target.name}”")
             }
-        )
-    }
-}
-
-/** Small green pill button used to trigger "save current selection as a template". */
-@Composable
-private fun SavePill(enabled: Boolean, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(if (enabled) GreenColor else LightPrimary)
-            .let { if (enabled) it.clickable { onClick() } else it }
-            .padding(horizontal = 12.dp, vertical = 7.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        ImageButtons(
-            icon = Icons.Default.Add,
-            size = 18,
-            tint = if (enabled) Color.White else Color(0xff7fa6b0),
-            onClick = { if (enabled) onClick() }
-        )
-        Text(
-            text = "Save",
-            color = if (enabled) Color.White else Color(0xff7fa6b0),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
         )
     }
 }
@@ -176,9 +181,9 @@ private fun EmptyTemplates(hasSelection: Boolean) {
     ) {
         Text(
             text = if (hasSelection)
-                "Tap Save to store your selected languages as a reusable template."
+                "Click Save to store your selected languages as a reusable template."
             else
-                "No templates yet. Select some languages, then tap Save to keep them for next time.",
+                "No templates yet. Select some languages and click Save, or Import a list you already have.",
             color = Color(0xff9fb9c1),
             fontSize = 12.sp,
         )
@@ -234,36 +239,33 @@ private fun TemplateRow(
             VerticalSpacer(3)
             Text(
                 text = preview.ifBlank { "no languages" },
-                color = Color(0xff7fa6b0),
+                color = MutedTextColor,
                 fontSize = 11.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
         HorizontalSpacer(8)
-        Text(
-            text = if (isActive) "Active" else "Apply",
-            color = if (isActive) GreenColor else Color.White,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier
-                .clip(RoundedCornerShape(6.dp))
-                .let { if (isActive) it else it.clickable { onApply() } }
-                .border(
-                    1.dp,
-                    if (isActive) Color.Transparent else GreenColor,
-                    RoundedCornerShape(6.dp)
-                )
-                .padding(horizontal = 12.dp, vertical = 6.dp)
-        )
+        if (isActive) {
+            ActiveBadge()
+        } else {
+            PillButton(text = "Apply", style = PillStyle.Accent, onClick = onApply)
+        }
+        HorizontalSpacer(6)
+        IconActionButton(icon = AppIcons.DeleteOutline, tooltip = "Delete template", onClick = onDelete)
+    }
+}
+
+/** Replaces the Apply button on the template that matches the current selection. */
+@Composable
+private fun ActiveBadge() {
+    Row(
+        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xff9be870), modifier = Modifier.size(15.dp))
         HorizontalSpacer(4)
-        ImageButtons(
-            icon = Icons.Default.Delete,
-            size = 22,
-            tint = Color(0xffe07a7a),
-            color = Color.Red,
-            onClick = onDelete
-        )
+        Text("Active", color = Color(0xff9be870), fontSize = 12.sp, fontWeight = FontWeight.Bold)
     }
 }
 

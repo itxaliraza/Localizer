@@ -36,6 +36,7 @@ import com.example.localizer.generated.resources.Res
 import com.example.localizer.generated.resources.ic_close
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
+import theme.AppTextSelectionColors
 import theme.PrimaryColor
 import theme.ScreenColor
 
@@ -74,7 +75,8 @@ fun EditText(
             unfocusedBorderColor = PrimaryColor,
             unfocusedContainerColor = ScreenColor,
             focusedContainerColor = ScreenColor,
-            cursorColor = Color.White
+            cursorColor = Color.White,
+            selectionColors = AppTextSelectionColors
         ),
         singleLine = true,
         onValueChange = onValueChange

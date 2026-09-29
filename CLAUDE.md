@@ -28,14 +28,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Full detail in [wiki/architecture.md](wiki/architecture.md). The essentials:
 
-- **One window, one screen, one ViewModel.** `Main.kt` builds an undecorated AWT-driven window hosting `HomeScreenNew`; `LanguagesScreen` is a left panel that receives the same `HomeScreenViewModel`. No navigation graph.
+- **One window, one screen.** `Main.kt` builds an undecorated AWT-driven window hosting `HomeScreenNew`; `LanguagesScreen` is a left panel that receives the same `HomeScreenViewModel`. No navigation graph; everything else is a Compose `Dialog`. The only other ViewModel is `AboutViewModel` (title-bar info icon → About dialog + GitHub update check). The app version comes from the generated `buildinfo.BuildInfo.VERSION`.
 - **State:** `HomeScreenViewModel` (plain Kotlin class, manual `CoroutineScope(Dispatchers.IO)`) exposes an immutable `HomeScreenState` via `StateFlow`; fire-once UI events go through a `Channel`. Composables are stateless.
 - **Pipeline:** `FolderExtractor` scans a `res/` folder or a whole project root (discovering every module with translatable strings) → `TranslationManager.translate()` returns a `channelFlow<TranslationResult>` that loops modules × languages, computes missing keys (`englishKeys - languageKeys`), translates them, and merges results into the existing target `strings.xml` via `FilesHelper.mergeEntriesIntoXml` (preserves arrays/plurals/comments/`translatable="false"`).
 - **Translation network layer:** `TranslationManager` depends on the `TranslationRepository` interface, which Koin binds to `MyTranslatorRepoImpl`. That class rotates between the two JSON Google endpoints (`TranslatorApi2/3Impl`) and falls back to the HTML scraper (`TranslatorApi1Impl`) last, never as part of the rotation. An endpoint that fails is put on a cool-down that doubles with each consecutive failure. `LocalizationUtils` protects placeholders and escapes: text is sanitized once before the request, and every response is checked when they are restored. A semaphore caps requests at 8 in flight, each key gets a few retries, and a key that fails on every endpoint is skipped instead of aborting the run.
 - **Output folder naming:** language codes are remapped (`in`→`id`, etc.) and converted to valid Android qualifiers (`pt-BR` → `values-pt-rBR`) by `FilesHelper.toAndroidResFolderCode`.
 - **DI:** Koin, single module in `di/SharedModule.kt`. Mostly `factory`; `TemplatesRepository` is `single`. `FilesHelper`, `FolderExtractor`, `LocalizationUtils` are Kotlin `object`s called directly, not injected.
 - **Persistence:** only language templates, stored at `~/.fast-localizer/templates.json`. Everything else is in-memory.
-- **Layering rule:** UI packages (`home_screen/`, `languages_screen/`, `common_components/`) must not import from `data/`; they depend on `domain/model/` and the ViewModel.
+- **Layering rule:** UI packages (`home_screen/`, `languages_screen/`, `about_screen/`, `common_components/`) must not import from `data/`; they depend on `domain/model/` and the ViewModel.
 
 ## Wiki
 

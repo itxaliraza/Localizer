@@ -23,6 +23,8 @@ main() [Main.kt]
 | Save-as-template dialog | Compose `Dialog` (in `TemplatesCard`) | "Save" pill in Language Templates card | "Cancel" / "Save" |
 | Delete-template confirm | Compose `Dialog` (in `TemplatesCard`) | trash icon on a template row | "Cancel" / "Delete" |
 | `ModuleStringsDialog` | Compose `Dialog` | "View" on a module row | "Close" |
+| `ImportLanguagesDialog` | Compose `Dialog` (in `TemplatesCard`) | "Import" pill in Language Templates card | "Cancel" / "Select these" / "Save as template" |
+| `AboutDialog` | Compose `Dialog` (in `CustomTitleBar`, `Main.kt`) | info icon in the title bar | "Close" |
 | Snackbar (file loaded / templates) | Custom Compose overlay | `HomeScreenOneTimeEvents.FileLoadedSuccess/Fail`, or `TemplatesCard` save/apply/delete | Auto-dismiss after timeout |
 
 ## Entry Point

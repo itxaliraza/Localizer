@@ -21,6 +21,8 @@ Adding a new language to an Android app normally means copying `strings.xml`, pa
 - **Keeps your XML intact.** Existing target files are merged, not replaced: comments, `translatable="false"` strings, string arrays and plurals are preserved. Resource references such as `@string/app_name` are left as they are.
 - **Correct Android folder names.** Region locales are written as valid qualifiers (`pt-BR` → `values-pt-rBR`, `zh-CN` → `values-zh-rCN`), so Android Studio accepts them.
 - **Language templates.** Save a set of languages (for example "Play Store top 20") and apply it with one click next time. Templates are kept between sessions.
+- **Import your own list.** Already have your languages in a spreadsheet, JSON, `locales_config.xml` or a note? Click **Import**, then choose the file or paste the text. Codes, folder names and language names are picked out automatically, and you can review them before selecting or saving them as a template.
+- **Update check.** The ⓘ icon in the title bar shows the app version and tells you when a newer release is available, with a direct download link.
 - **Live progress.** One bar shows which module and language is being translated (`3/12`), and a second shows how many of that language's strings are done. You can stop at any time.
 - **Resilient translation.** Requests rotate across several Google Translate endpoints, with retries and automatic cool-down when one is rate-limited. If one string fails, it is skipped and reported, and the rest of the run continues.
 

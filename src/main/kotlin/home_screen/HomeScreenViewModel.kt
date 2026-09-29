@@ -5,9 +5,12 @@ import data.model.LanguageTemplate
 import data.model.TranslationResult
 import data.translator.TranslationManager
 import data.util.FolderExtractor
+import data.util.LanguageListParser
 import data.util.ModuleExtraction
 import data.util.TemplatesRepository
+import domain.model.LanguageImportResult
 import domain.model.LanguageModel
+import java.io.File
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -47,12 +50,11 @@ class HomeScreenViewModel(
     }
 
     /**
-     * Save the current language selection as a named, reusable template and persist it.
-     * No-op when nothing is selected or [name] is blank. A fresh UUID is generated each call,
+     * Save [codes] (by default the current language selection) as a named, reusable template and persist it.
+     * No-op when there are no codes or [name] is blank. A fresh UUID is generated each call,
      * so saving twice with the same name yields two distinct templates (the user can delete one).
      */
-    fun createTemplate(name: String) {
-        val codes = state.value.selectedLanguages.map { it.langCode }
+    fun createTemplate(name: String, codes: List<String> = state.value.selectedLanguages.map { it.langCode }) {
         if (codes.isEmpty() || name.isBlank()) return
         val template = LanguageTemplate(
             id = UUID.randomUUID().toString(),
@@ -69,13 +71,28 @@ class HomeScreenViewModel(
      * [HomeScreenState.availableLanguages] by code). Codes no longer in the list are silently
      * dropped. Replace — not merge — so applying a template is predictable ("switch to this set").
      */
-    fun applyTemplate(template: LanguageTemplate) {
-        val codeSet = template.langCodes.toSet()
+    fun applyTemplate(template: LanguageTemplate) = selectLanguagesByCode(template.langCodes)
+
+    /** Replace the current selection with the available languages whose code is in [codes]. */
+    fun selectLanguagesByCode(codes: Collection<String>) {
+        val codeSet = codes.toSet()
         val matched = state.value.availableLanguages
             .filter { it.langCode in codeSet }
             .toMutableSet()
         _state.update { it.copy(selectedLanguages = matched) }
     }
+
+    /** Pick the supported languages out of a pasted or imported list (see [LanguageListParser]). */
+    fun parseLanguageList(text: String): LanguageImportResult = LanguageListParser.parse(text)
+
+    /**
+     * Reads a user-chosen language list file as text, or null if it can't be read or is larger than
+     * [MAX_IMPORT_BYTES] (a language list is tiny; anything bigger is almost certainly the wrong file).
+     */
+    fun readLanguageListFile(path: String): String? = runCatching {
+        val file = File(path)
+        if (!file.isFile || file.length() > MAX_IMPORT_BYTES) null else file.readText()
+    }.getOrNull()
 
     /** Delete the template with [id] and persist the change. */
     fun deleteTemplate(id: String) {
@@ -259,4 +276,7 @@ class HomeScreenViewModel(
         }
     }
 
+    companion object {
+        private const val MAX_IMPORT_BYTES = 512 * 1024
+    }
 }

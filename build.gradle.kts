@@ -6,6 +6,9 @@ plugins {
     kotlin("plugin.serialization")
 }
 
+// CI passes -PappVersion=<tag> (see .github/workflows/release.yml); local builds use the fallback.
+val appVersion = (project.findProperty("appVersion") as String?) ?: "9.0.2"
+
 group = "com.example"
 version = "1.0-SNAPSHOT"
 
@@ -52,6 +55,21 @@ tasks.test {
     useJUnitPlatform()
 }
 
+// Bakes the app version into the code (buildinfo.BuildInfo.VERSION) so the About dialog can show it
+// and compare it with the latest GitHub release, both in `./gradlew run` and in the installed EXE.
+val generateBuildInfo by tasks.registering {
+    val outputDir = layout.buildDirectory.dir("generated/buildinfo")
+    val version = appVersion
+    inputs.property("version", version)
+    outputs.dir(outputDir)
+    doLast {
+        val file = outputDir.get().file("buildinfo/BuildInfo.kt").asFile
+        file.parentFile.mkdirs()
+        file.writeText("package buildinfo\n\nobject BuildInfo {\n    const val VERSION = \"$version\"\n}\n")
+    }
+}
+kotlin.sourceSets["main"].kotlin.srcDir(generateBuildInfo)
+
 compose.desktop {
     application {
         mainClass = "MainKt"
@@ -63,8 +81,7 @@ compose.desktop {
             // testing, so this is precautionary, not a fix for an observed failure.
             modules("java.instrument", "java.management", "jdk.unsupported")
             packageName = "Fast Localizer"
-            // CI passes -PappVersion=<tag> (see .github/workflows/release.yml); local builds use the fallback.
-            packageVersion = (project.findProperty("appVersion") as String?) ?: "9.0.1"
+            packageVersion = appVersion
             windows {
                 perUserInstall = true  // Ensures the app is installed per user, not system-wide
                 shortcut = true

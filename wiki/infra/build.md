@@ -61,7 +61,7 @@ compose.desktop {
             targetFormats(TargetFormat.Exe)
             modules("java.instrument", "java.management", "jdk.unsupported")
             packageName = "Fast Localizer"
-            packageVersion = (project.findProperty("appVersion") as String?) ?: "9.0.1"
+            packageVersion = appVersion
             windows {
                 perUserInstall = true
                 shortcut = true
@@ -91,3 +91,7 @@ Single build target. No product flavors, no signing config.
 ## Release CI
 
 `.github/workflows/release.yml` runs on every pushed tag matching `*.*.*` or `v*.*.*`. On a `windows-latest` runner with JDK 21 it runs `./gradlew test packageExe -PappVersion=<tag without leading v>`, then attaches `build/compose/binaries/main/exe/*.exe` to that tag's GitHub Release (created if missing, with auto-generated notes). Failing tests block the release. `packageVersion` reads the `appVersion` Gradle property and falls back to the hardcoded value for local builds. The value must be `MAJOR.MINOR.BUILD`, so the tag must be numeric (e.g. `10.0.0`). In PowerShell, quote the argument: `"-PappVersion=10.0.0"`.
+
+## Generated BuildInfo
+
+`build.gradle.kts` defines `val appVersion = (findProperty("appVersion") as String?) ?: "9.0.2"` once and uses it for `packageVersion` and for the `generateBuildInfo` task. That task writes `build/generated/buildinfo/buildinfo/BuildInfo.kt` (`object BuildInfo { const val VERSION }`), which is added to the main Kotlin source set via `kotlin.sourceSets["main"].kotlin.srcDir(generateBuildInfo)`, so compilation depends on it automatically. The About dialog reads `BuildInfo.VERSION`; it works the same under `./gradlew run` and in the installed EXE.

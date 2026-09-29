@@ -4,6 +4,35 @@ Append-only. One entry per change session. Format: `## YYYY-MM-DD — <summary>`
 
 ---
 
+## 2026-09-29 — Visible text selection in input fields
+
+**What changed:** Selected text in text fields was invisible: the default highlight is derived from `PrimaryColor`, nearly the same shade as the field background. Added `AccentBlue` and `AppTextSelectionColors` (translucent bright blue) in `theme/Colors.kt` and set `selectionColors` on both text fields: the shared `EditText` (search, folder path, template names) and the import paste box.
+
+**Files touched:** `src/main/kotlin/theme/Colors.kt`, `src/main/kotlin/common_components/CommonComponents.kt`, `src/main/kotlin/home_screen/components/ImportLanguagesDialog.kt`, `wiki/log.md`.
+
+## 2026-09-29 — Import: Clear link, Mandarin and Latgalian codes
+
+**What changed:** The import dialog's paste box has a **Clear** link. `LanguageListParser` now maps `cmn`/`cmn-Hans` to Chinese (Simplified) and `cmn-Hant` to Chinese (Traditional), treats `ltg` (correct Latgalian code) as `itg` (the app list's typo), and drops subtags one at a time (`cmn-Hans-CN` → `cmn-Hans` → `cmn`). A Kotlin language-list fixture test checks a real-world list is fully recognised.
+
+**Files touched:** `src/main/kotlin/data/util/LanguageListParser.kt`, `src/main/kotlin/home_screen/components/ImportLanguagesDialog.kt`, `src/test/kotlin/data/util/LanguageListParserTest.kt`, `src/test/resources/import/kotlin_language_list.txt` (new), `wiki/features/language-list-import.md`, `wiki/log.md`.
+
+## 2026-09-29 — Import dialog: keep buttons visible; match equivalent codes
+
+**What changed:** The import dialog body now scrolls between a fixed title and a fixed action row, so the buttons no longer disappear when many languages are found. `LanguageListParser` resolves codes on its own instead of through `FilesHelper.extractLanguageCode`: exact code, then equivalent spellings (`in`↔`id`, `jv`↔`jw`, `iw`↔`he`, …), then the only regional variant (`pt` → `pt-PT`), then the base language. `in`, `pt` and `jv` were reported as unrecognised when the language list used `in`/`pt-PT`/`jw`. `parse` takes an optional `languages` list for tests; new test covers the equivalents.
+
+**Files touched:** `src/main/kotlin/data/util/LanguageListParser.kt`, `src/main/kotlin/home_screen/components/ImportLanguagesDialog.kt`, `src/test/kotlin/data/util/LanguageListParserTest.kt`, `wiki/features/language-list-import.md`, `wiki/log.md`.
+
+## 2026-09-29 — Language list import, restyled template actions, About dialog with update check
+
+**What changed:**
+- **Import** pill in the Language Templates card opens `ImportLanguagesDialog`: choose a file (`.txt/.csv/.tsv/.json/.xml/.md`, ≤ 512 KB) or paste text. `LanguageListParser` extracts codes, Android folder names and language names, ignoring everything else; the preview shows matched languages as chips (click to exclude) plus unrecognised code-like entries; then **Select these** or **Save as template**.
+- Template rows: Apply is now an accent `PillButton`, the matching template shows a ✓ Active badge, and delete is an `IconActionButton` (outlined trash, muted until hover, then red, with tooltip). Save uses the shared `PillButton`.
+- Title-bar info icon (previously did nothing) opens the new **About dialog**: version, how-to, links, and an automatic update check against the latest GitHub release with a Download button.
+- `build.gradle.kts` generates `buildinfo.BuildInfo.VERSION` from the same `appVersion` used for `packageVersion`.
+- New tests: `LanguageListParserTest` (11), `UpdateCheckerTest`.
+
+**Files touched:** `build.gradle.kts`, `src/main/kotlin/Main.kt`, `src/main/kotlin/di/SharedModule.kt`, `src/main/kotlin/theme/Colors.kt`, `src/main/kotlin/home_screen/HomeScreenViewModel.kt`, `src/main/kotlin/home_screen/components/TemplatesCard.kt`, `src/main/kotlin/home_screen/components/ImportLanguagesDialog.kt` (new), `src/main/kotlin/about_screen/AboutDialog.kt` (new), `src/main/kotlin/about_screen/AboutViewModel.kt` (new), `src/main/kotlin/common_components/Buttons.kt` (new), `src/main/kotlin/common_components/AppIcons.kt` (new), `src/main/kotlin/common_components/OpenUrl.kt` (new), `src/main/kotlin/data/util/LanguageListParser.kt` (new), `src/main/kotlin/data/util/UpdateChecker.kt` (new), `src/main/kotlin/domain/model/LanguageImportResult.kt` (new), `src/main/kotlin/domain/model/LatestRelease.kt` (new), `src/test/kotlin/data/util/LanguageListParserTest.kt` (new), `wiki/screens/about-dialog.md` (new), `wiki/features/language-list-import.md` (new), `wiki/index.md`, `wiki/features/language-templates.md`, `wiki/features/custom-window-controls.md`, `wiki/screens/home-screen.md`, `wiki/infra/navigation.md`, `wiki/infra/di.md`, `wiki/infra/build.md`, `wiki/architecture.md`, `CLAUDE.md`, `README.md`, `wiki/log.md`.
+
 ## 2026-09-29 — Add user-facing README
 
 **What changed:** Added `README.md` covering what the app does, features, installation (unsigned-installer SmartScreen note), usage steps, limitations, building from source and automated releases. No code changes.

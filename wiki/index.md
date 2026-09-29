@@ -11,6 +11,7 @@
 | Screen | Wiki Page | Description |
 |--------|-----------|-------------|
 | Home Screen | [wiki/screens/home-screen.md](screens/home-screen.md) | Main window: folder input, translation controls, progress |
+| About Dialog | [wiki/screens/about-dialog.md](screens/about-dialog.md) | Title-bar info icon: version, how-to, links, update check against GitHub releases |
 | Languages Screen | [wiki/screens/languages-screen.md](screens/languages-screen.md) | Left panel: searchable language grid with select-all |
 
 ---
@@ -22,6 +23,7 @@
 | File Loading & Extraction | [wiki/features/file-loading.md](features/file-loading.md) | Scan `values/` dirs, parse `strings.xml`, extract key-value pairs |
 | Language Selection | [wiki/features/language-selection.md](features/language-selection.md) | 250+ language grid with search, select all, selection state |
 | Language Templates | [wiki/features/language-templates.md](features/language-templates.md) | Save the current language selection as a named, reusable set; apply in one click; persisted on disk |
+| Language List Import | [wiki/features/language-list-import.md](features/language-list-import.md) | Import a language list from a file or pasted text; codes/names are extracted, previewed, then selected or saved as a template |
 | Translation Orchestration | [wiki/features/translation-orchestration.md](features/translation-orchestration.md) | Coordinate multi-language translation workflow; reports failed strings, handles arrays/plurals all-or-nothing |
 | Translation API Layer | [wiki/features/translation-api.md](features/translation-api.md) | Three rotating Google Translate endpoints with fallback |
 | XML Parsing & Writing | [wiki/features/xml-parsing-writing.md](features/xml-parsing-writing.md) | DOM-based parse/merge/atomic-write of `strings.xml` (strings, arrays, plurals, markup) |

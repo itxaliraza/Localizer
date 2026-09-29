@@ -1,0 +1,26 @@
+val translateLanguageList: List<LanguageModel> by lazy {
+        listOf(
+            LanguageModel("English", "English", "en", "en-US", "en-US", countryFlag = R.drawable.flag_united_kingdom),
+            LanguageModel("Abkhaz", "Аԥсуа бызшәа (Apsua byzshwa)", "ab", "", "", true, R.drawable.flag_abkhazia),
+            LanguageModel("Acehnese", "Bahasa Acèh", "ace", "", "", true, R.drawable.flag_indonesia),
+            LanguageModel("Afrikaans", "Afrikaans", "af", "af-ZA", "af-ZA", countryFlag = R.drawable.flag_south_africa),
+            LanguageModel("Breton", "Brezhoneg", "br", "", "", true, R.drawable.flag_france), // fixed code
+            LanguageModel("Cantonese", "廣東話 ", "yue", "zh-HK", "zh-HK", true, R.drawable.flag_china),
+            LanguageModel("Chinese(Simplified)", "简体中文", "zh-CN", "cmn-Hans-CN", "cmn-Hans-CN", countryFlag = R.drawable.flag_china), // fixed code
+            LanguageModel("Dari", "دری", "fa", "fa-AF", "", true, countryFlag = R.drawable.flag_afghanistan), // normalized
+            LanguageModel("Filipino", "Pilipino", "tl", "fil-PH", "tl", countryFlag = R.drawable.flag_philippines),
+            LanguageModel("Hebrew", "עִברִית", "he", "he-IL", "he", countryFlag = R.drawable.flag_israel), // fixed code
+            LanguageModel("Indonesian", "Bahasa Indonesia", "id", "id-ID", "id-ID", countryFlag = R.drawable.flag_indonesia), // fixed code
+            LanguageModel("Javanese", "Jawa", "jv", "jv-ID", "jv", countryFlag = R.drawable.flag_indonesia), // fixed code
+            LanguageModel("Latgalian", "Latgalīšu volūda", "ltg", "", "", true, R.drawable.flag_latvia), // fixed code
+            LanguageModel("Malay (Jawi)", "بهاس ملايو", "ms-Arab", "ms-Arab", "", true, R.drawable.flag_malaysia),
+            LanguageModel("Meiteilon Manipuri", "ꯃꯩꯇꯩꯂꯣꯟ ", "mni-Mtei", "", "", countryFlag = R.drawable.flag_india),
+            LanguageModel("Norwegian", "Norsk", "no", "nb-NO", "nb-NO", countryFlag = R.drawable.flag_norway),
+            LanguageModel("Portuguese (Brazil)", "Português ", "pt", "pt-BR", "", true, R.drawable.flag_brazil),   // normalized
+            LanguageModel("Portuguese (Portugal)", "Português ", "pt", "pt-PT", "", true, R.drawable.flag_portugal), // normalized
+            LanguageModel("Santali", "ᱥᱟᱱᱛᱟᱲᱤ", "sat-Latn", "sat-Latn", "", true, R.drawable.flag_india),
+            LanguageModel("Tamazight", "Tamaziɣt", "ber-Latn", "ber-Latn", "", true, R.drawable.flag_morocco),
+            LanguageModel("Yiddish", "ייִדיש", "yi", "", "", countryFlag = R.drawable.flag_yiddish),
+            LanguageModel("Zulu", "isiZulu", "zu", "zu-ZA", "", countryFlag = R.drawable.flag_south_africa)
+        )
+    }

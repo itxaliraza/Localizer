@@ -12,7 +12,8 @@ The main application screen. Left column holds the language selection grid; righ
 - `src/main/kotlin/home_screen/HomeScreenOneTimeEvents.kt` — sealed interface for fire-once events (FileLoadedSuccess, FileLoadedFail)
 - `src/main/kotlin/home_screen/components/RectangleWithShadow.kt` — elevated card with optional blink animation; used for status/result boxes
 - `src/main/kotlin/home_screen/components/RoundedCard.kt` — material Card button with optional stroke; used for Load File and Start buttons
-- `src/main/kotlin/home_screen/components/TemplatesCard.kt` — Language Templates card: save current selection, apply/delete templates (see [language-templates.md](../features/language-templates.md))
+- `src/main/kotlin/home_screen/components/TemplatesCard.kt` — Language Templates card: save current selection, import a list, apply/delete templates (see [language-templates.md](../features/language-templates.md))
+- `src/main/kotlin/home_screen/components/ImportLanguagesDialog.kt` — import dialog opened from the templates card (see [language-list-import.md](../features/language-list-import.md))
 - `src/main/kotlin/theme/Colors.kt` — `WarningColor` (amber) used for the completion-problems headline
 
 ## State & data

@@ -1,5 +1,6 @@
 package di
 
+import about_screen.AboutViewModel
 import data.translator.MyTranslatorRepoImpl
 import data.translator.TranslationRepository
 import data.translator.apis.TranslatorApi1Impl
@@ -16,6 +17,9 @@ val SharedModule = module{
     }
     single {
         TemplatesRepository()
+    }
+    factory {
+        AboutViewModel()
     }
     factory<TranslationRepository> {
         MyTranslatorRepoImpl(get<TranslatorApi1Impl>(), get<TranslatorApi2Impl>(), get<TranslatorApi3Impl>())

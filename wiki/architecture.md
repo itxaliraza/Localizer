@@ -32,7 +32,7 @@ UI (Composables)
 
 ## Dependency Rules
 
-- UI layer (`home_screen/`, `languages_screen/`, `common_components/`, `Main.kt`) depends on `domain/model/` and the ViewModel. It does **not** import from `data/`.
+- UI layer (`home_screen/`, `languages_screen/`, `about_screen/`, `common_components/`, `Main.kt`) depends on `domain/model/` and the ViewModels. It does **not** import from `data/`.
 - `HomeScreenViewModel` depends on `TranslationManager`, `TemplatesRepository` (both Koin-injected), `FolderExtractor`, and `AvailableLanguages`.
 - `TranslationManager` depends on the `TranslationRepository` interface (Koin binds `MyTranslatorRepoImpl`) and `FilesHelper`.
 - `MyTranslatorRepoImpl` depends on three `TranslatorApis` (the API impls) and `LocalizationUtils`.

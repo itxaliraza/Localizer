@@ -12,6 +12,7 @@ Koin 4.2.2 with `io.insert-koin:koin-compose` integration.
 val SharedModule = module {
     factory { HomeScreenViewModel(get(), get()) }    // get()×2 = TranslationManager, TemplatesRepository
     single  { TemplatesRepository() }                // persists language templates to ~/.fast-localizer/templates.json
+    factory { AboutViewModel() }                     // About dialog; injected once in CustomTitleBar (Main.kt)
     factory<TranslationRepository> { MyTranslatorRepoImpl(get<TranslatorApi1Impl>(), get<TranslatorApi2Impl>(), get<TranslatorApi3Impl>()) } // explicit types: MyTranslatorRepoImpl takes the TranslatorApis interface
     factory { TranslationManager(get()) }            // get() = TranslationRepository
     factory { TranslatorApi1Impl() }

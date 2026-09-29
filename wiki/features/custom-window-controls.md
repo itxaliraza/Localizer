@@ -2,7 +2,7 @@
 
 ## What it does
 
-Provides a custom title bar with "Fast Localizer" title, minimize, maximize/restore, and close buttons on an undecorated (borderless) AWT window. Supports window dragging by clicking anywhere in the top 40px strip.
+Provides a custom title bar with "Fast Localizer" title, an info icon (opens the [About dialog](../screens/about-dialog.md)), minimize, maximize/restore, and close buttons on an undecorated (borderless) AWT window. Supports window dragging by clicking anywhere in the top 40px strip.
 
 ## Key files
 
@@ -14,8 +14,8 @@ Provides a custom title bar with "Fast Localizer" title, minimize, maximize/rest
 
 ## State & data
 
-- **Local state:** `isMaximized: Boolean` (Compose `mutableStateOf`) in `App()` Composable
-- **No ViewModel involvement** — pure window-management side effects
+- **Local state:** `isMaximized` and `showAbout` (Compose `mutableStateOf`) in `CustomTitleBar`
+- Window management has no ViewModel; the About dialog uses `AboutViewModel` (`koinInject()` in `CustomTitleBar`)
 
 ## Dependencies
 
