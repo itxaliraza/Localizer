@@ -4,6 +4,12 @@ Append-only. One entry per change session. Format: `## YYYY-MM-DD — <summary>`
 
 ---
 
+## 2026-09-29 — Add user-facing README
+
+**What changed:** Added `README.md` covering what the app does, features, installation (unsigned-installer SmartScreen note), usage steps, limitations, building from source and automated releases. No code changes.
+
+**Files touched:** `README.md` (new), `wiki/log.md`.
+
 ## 2026-09-29 — Auto-build EXE on tag push
 
 **What changed:** Added a GitHub Actions workflow that runs tests, builds the Windows EXE and attaches it to the GitHub Release whenever a version tag is pushed. `packageVersion` now reads the `-PappVersion` Gradle property (falling back to `9.0.1`, the first auto-released tag) so the installer version follows the tag.
