@@ -1,5 +1,6 @@
 package data
 
+import data.util.LanguageCodeResolver
 import org.w3c.dom.CDATASection
 import org.w3c.dom.Comment
 import org.w3c.dom.Document
@@ -66,35 +67,11 @@ object FilesHelper {
         val regex = Regex("""values-([\w+-]+)/""")
         val rawCode = regex.find(fileName)?.groups?.get(1)?.value ?: return "en" to "en"
 
-        // First undo any Android resource qualifier form (pt-rBR -> pt-BR, b+ms+Arab -> ms-Arab),
-        // then apply the legacy / Google-Translate remaps.
+        // Undo any Android resource qualifier form (pt-rBR -> pt-BR, b+ms+Arab -> ms-Arab), then map any
+        // spelling to the code in [availableLanguages] (in <-> id, iw <-> he, itg -> ltg, zh -> zh-CN,
+        // es-MX -> es, pt -> pt-PT). Returns the locale code unchanged if no supported language matches.
         val localeCode = fromAndroidResFolderCode(rawCode)
-        val remapped = when (localeCode) {
-            "zh", "zh-CN" -> "zh-CN"
-            "zh-TW" -> "zh-TW"
-            "in" -> "id"
-            "he" -> "iw"
-            "ji" -> "yi"
-            else -> localeCode
-        }
-
-        return rawCode to resolveAvailableCode(remapped)
-    }
-
-    /**
-     * Resolves a locale code to the exact code present in [availableLanguages]. Tries a
-     * case-insensitive exact match first; if none, falls back to the base language subtag — so an
-     * Android region folder like `values-pt-rBR` (→ `pt-BR`) still resolves to the available `pt`
-     * entry, and `values-es-rMX` resolves to `es`. Returns the input unchanged if nothing matches.
-     */
-    private fun resolveAvailableCode(code: String): String {
-        availableLanguages.firstOrNull { it.langCode.equals(code, ignoreCase = true) }?.let { return it.langCode }
-        val base = code.substringBefore('-')
-        if (base != code) {
-            availableLanguages.firstOrNull { it.langCode.equals(base, ignoreCase = true) }
-                ?.let { return it.langCode }
-        }
-        return code
+        return rawCode to (LanguageCodeResolver.resolve(localeCode)?.langCode ?: localeCode)
     }
 
     /**

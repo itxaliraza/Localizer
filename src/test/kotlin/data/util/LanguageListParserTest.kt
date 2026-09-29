@@ -23,7 +23,7 @@ class LanguageListParserTest {
     @Test
     fun `android folder names and region forms resolve to available codes`() {
         val result = codes("values-fr\nvalues-pt-rBR/strings.xml\nvalues-b+ms+Arab\nzh_CN\nvalues-in")
-        assertEquals(listOf("fr", "pt", "ms-Arab", "zh-CN", "id"), result)
+        assertEquals(listOf("fr", "pt-PT", "ms-Arab", "zh-CN", "in"), result)
     }
 
     @Test
@@ -97,8 +97,8 @@ class LanguageListParserTest {
         val result = LanguageListParser.parse(text)
         assertEquals(emptyList(), result.unrecognized)
         val codes = result.matched.map { it.langCode }.toSet()
-        listOf("en", "ab", "ace", "af", "br", "yue", "zh-CN", "fa", "tl", "iw", "id", "jw", "itg", "ms-Arab",
-            "mni-Mtei", "no", "pt", "pt-PT", "sat-Latn", "ber-Latn", "yi", "zu")
+        listOf("en", "ab", "ace", "af", "br", "yue", "zh-CN", "fa", "tl", "iw", "in", "jw", "ltg", "ms-Arab",
+            "mni-Mtei", "no", "pt-PT", "sat-Latn", "ber-Latn", "yi", "zu")
             .forEach { assertTrue(it in codes, "missing $it") }
     }
 
@@ -129,5 +129,29 @@ class UpdateCheckerTest {
         assertTrue(UpdateChecker.isNewer("v9.1", "9.0.9"))
         assertFalse(UpdateChecker.isNewer("9.0.1", "9.0.1"))
         assertFalse(UpdateChecker.isNewer("9.0.0", "9.0.1"))
+    }
+}
+
+class LanguageCodeResolverTest {
+
+    private fun resolve(code: String) = LanguageCodeResolver.resolve(code)?.langCode
+
+    @Test
+    fun `old and alternative spellings resolve to the codes the app uses`() {
+        assertEquals("in", resolve("id"))
+        assertEquals("in", resolve("in"))
+        assertEquals("ltg", resolve("itg"))
+        assertEquals("pt-PT", resolve("pt"))
+        assertEquals("pt-PT", resolve("pt-BR"))
+        assertEquals("iw", resolve("he"))
+        assertEquals("zh-CN", resolve("zh"))
+        assertEquals("zh-TW", resolve("zh-HK"))
+        assertEquals("en", resolve("en_US"))
+    }
+
+    @Test
+    fun `unknown codes resolve to nothing`() {
+        assertEquals(null, resolve("xx"))
+        assertEquals(null, resolve("qq-ZZ"))
     }
 }

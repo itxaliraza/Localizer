@@ -29,5 +29,5 @@ Opened from the info icon in the custom title bar. Shows the app icon, name and 
 ## Notes
 - The update check starts automatically the first time the dialog opens (`LaunchedEffect` when state is `Idle`); the result is kept for later openings because `koinInject()` is remembered for the title bar's lifetime. "Check again" / "Retry" re-run it.
 - **Download** opens the `.exe` asset URL directly (the browser downloads it); if the release has no `.exe`, it opens the release page.
-- Local builds report the fallback version from `build.gradle.kts` (currently `9.0.2`), not the tag, unless run with `-PappVersion=…`.
+- Local builds report the fallback version from `build.gradle.kts` (currently `9.0.3`), not the tag, unless run with `-PappVersion=…`.
 - `LatestRelease` lives in `domain/model/` so the UI doesn't import from `data/`.

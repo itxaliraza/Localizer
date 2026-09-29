@@ -7,7 +7,7 @@ plugins {
 }
 
 // CI passes -PappVersion=<tag> (see .github/workflows/release.yml); local builds use the fallback.
-val appVersion = (project.findProperty("appVersion") as String?) ?: "9.0.2"
+val appVersion = (project.findProperty("appVersion") as String?) ?: "9.0.3"
 
 group = "com.example"
 version = "1.0-SNAPSHOT"

@@ -32,24 +32,8 @@ object LanguageListParser {
 
     private val BYTE_ORDER_MARK = Char(0xFEFF).toString()
 
-    // Codes that name the same language. Android, ISO 639 and Google Translate disagree on these, and the
-    // app's list uses one form, so a list written in the other form must still match.
-    private val equivalentCodes: List<Set<String>> = listOf(
-        setOf("id", "in"),
-        setOf("he", "iw"),
-        setOf("yi", "ji"),
-        setOf("jv", "jw"),
-        setOf("fil", "tl"),
-        setOf("nb", "no"),
-        // Latgalian is `ltg`; the app's list spells it `itg`.
-        setOf("ltg", "itg"),
-        // `cmn` is Mandarin, the BCP 47 tag some speech/locale APIs use for Chinese.
-        setOf("zh", "zh-cn", "zh-hans", "cmn", "cmn-hans"),
-        setOf("zh-tw", "zh-hant", "cmn-hant"),
-    )
-
     fun parse(text: String, languages: List<LanguageModel> = availableLanguages): LanguageImportResult {
-        val byCode = languages.associateBy { it.langCode.lowercase() }
+        val byCode = LanguageCodeResolver.index(languages)
         val byName = HashMap<String, LanguageModel>()
         languages.forEach { lang ->
             byName.putIfAbsent(lang.langName.trim().lowercase(), lang)
@@ -94,22 +78,7 @@ object LanguageListParser {
     ): LanguageModel? {
         byName[token.lowercase()]?.let { return it }
         if (!codeLike.matches(token)) return null
-        // Undo Android qualifier forms (pt-rBR → pt-BR, b+ms+Arab → ms-Arab), then resolve.
-        val code = FilesHelper.fromAndroidResFolderCode(token.replace('_', '-')).lowercase()
-        // Drop subtags from the end until something matches: cmn-hans-cn → cmn-hans → cmn, en-us → en.
-        return generateSequence(code) { if ('-' in it) it.substringBeforeLast('-') else null }
-            .firstNotNullOfOrNull { resolveCode(it, byCode) }
-    }
-
-    /**
-     * Exact code, then an equivalent spelling (in ↔ id, jv ↔ jw, …), then the only regional variant
-     * the app has for that language (pt → pt-PT when there is no plain `pt`).
-     */
-    private fun resolveCode(code: String, byCode: Map<String, LanguageModel>): LanguageModel? {
-        val candidates = listOf(code) + equivalentCodes.filter { code in it }.flatten()
-        candidates.firstNotNullOfOrNull { byCode[it] }?.let { return it }
-        return candidates.firstNotNullOfOrNull { candidate ->
-            byCode.entries.firstOrNull { it.key.startsWith("$candidate-") }?.value
-        }
+        // Undo Android qualifier forms (pt-rBR → pt-BR, b+ms+Arab → ms-Arab), then resolve any spelling.
+        return LanguageCodeResolver.resolve(FilesHelper.fromAndroidResFolderCode(token.replace('_', '-')), byCode)
     }
 }

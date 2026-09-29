@@ -27,11 +27,25 @@ class TemplatesRepository {
         return try {
             if (!file.exists()) return emptyList()
             val text = file.readText()
-            if (text.isBlank()) emptyList() else json.decodeFromString(text)
+            if (text.isBlank()) return emptyList()
+            val stored: List<LanguageTemplate> = json.decodeFromString(text)
+            val migrated = stored.map(::withCurrentCodes)
+            if (migrated != stored) save(migrated)
+            migrated
         } catch (e: Exception) {
             emptyList()
         }
     }
+
+    /**
+     * Rewrites old spellings of a code to the one the app uses now (`id` -> `in`, `itg` -> `ltg`,
+     * `pt` -> `pt-PT`), so templates saved by earlier versions keep their languages and are still
+     * highlighted as Active. Codes that match no supported language are kept as they are.
+     */
+    private fun withCurrentCodes(template: LanguageTemplate): LanguageTemplate =
+        template.copy(
+            langCodes = template.langCodes.map { LanguageCodeResolver.resolve(it)?.langCode ?: it }.distinct()
+        )
 
     fun save(templates: List<LanguageTemplate>) {
         try {

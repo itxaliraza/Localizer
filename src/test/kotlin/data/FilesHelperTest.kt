@@ -279,9 +279,12 @@ class FilesHelperTest {
 
     @Test
     fun `extractLanguageCode still resolves android qualifier forms`() {
-        assertEquals("pt", FilesHelper.extractLanguageCode("values-pt-rBR/strings.xml").second)
+        // Only Portuguese (Portugal) is offered, so a Brazilian folder resolves to it.
+        assertEquals("pt-PT", FilesHelper.extractLanguageCode("values-pt-rBR/strings.xml").second)
         assertEquals("zh-CN", FilesHelper.extractLanguageCode("values-zh-rCN/strings.xml").second)
-        assertEquals("id", FilesHelper.extractLanguageCode("values-in/strings.xml").second)
+        assertEquals("in", FilesHelper.extractLanguageCode("values-in/strings.xml").second)
+        assertEquals("in", FilesHelper.extractLanguageCode("values-id/strings.xml").second)
+        assertEquals("ltg", FilesHelper.extractLanguageCode("values-itg/strings.xml").second)
         assertEquals("en", FilesHelper.extractLanguageCode("values/strings.xml").second)
         assertNotEquals("en", FilesHelper.extractLanguageCode("values-fr/strings.xml").second)
     }

@@ -98,9 +98,10 @@ class FolderExtractorTest {
         val module = FolderExtractor.extractModules(File(root, "res").path).single()
 
         val codes = module.extraction.selectedLangs.map { it.langCode }
-        assertTrue("pt" in codes, codes.toString())
-        assertTrue("id" in codes, codes.toString())
-        assertEquals("in", module.extraction.changeFileCodes["id"])   // written back to values-in
+        assertTrue("pt-PT" in codes, codes.toString())
+        assertTrue("in" in codes, codes.toString())
+        assertEquals("pt-rBR", module.extraction.changeFileCodes["pt-PT"])   // written back to values-pt-rBR
+        assertEquals(null, module.extraction.changeFileCodes["in"])          // `in` is already the folder code
     }
 
     @Test

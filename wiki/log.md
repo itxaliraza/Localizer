@@ -4,6 +4,15 @@ Append-only. One entry per change session. Format: `## YYYY-MM-DD — <summary>`
 
 ---
 
+## 2026-09-29 — Language code changes: Indonesian `in`, Latgalian `ltg`, Portugal-only Portuguese; shared code resolver
+
+**What changed:**
+- `AvailableLanguages.kt`: Indonesian code `id` → `in`, "Portuguese (Brazil)" (`pt`) removed so Portuguese is offered only as `pt-PT`, and Latgalian `itg` → `ltg`. `itg` was a typo: Google returned the source text untranslated for it (checked live: `ltg` translates, `itg` echoes; `in` and `id` both translate).
+- New `LanguageCodeResolver` (moved out of `LanguageListParser`) maps any spelling to the app's code: equivalents (`id`↔`in`, `he`↔`iw`, `yi`↔`ji`, `jv`↔`jw`, `fil`↔`tl`, `nb`↔`no`, `itg`↔`ltg`, `zh`/`cmn` → `zh-CN`, `zh-HK`/`zh-Hant` → `zh-TW`), the only regional variant (`pt` → `pt-PT`), and subtag stripping. Used by folder detection (`FilesHelper.extractLanguageCode`, replacing its one-way `when` remap and `resolveAvailableCode`), list import, `HomeScreenViewModel.selectLanguagesByCode` (template Apply) and `TemplatesRepository.load`, which migrates saved templates to the current codes.
+- Tests updated for the new codes; new `LanguageCodeResolverTest`.
+
+**Files touched:** `src/main/kotlin/data/AvailableLanguages.kt`, `src/main/kotlin/data/FilesHelper.kt`, `src/main/kotlin/data/util/LanguageCodeResolver.kt` (new), `src/main/kotlin/data/util/LanguageListParser.kt`, `src/main/kotlin/data/util/TemplatesRepository.kt`, `src/main/kotlin/home_screen/HomeScreenViewModel.kt`, `src/test/kotlin/data/FilesHelperTest.kt`, `src/test/kotlin/data/util/FolderExtractorTest.kt`, `src/test/kotlin/data/util/LanguageListParserTest.kt`, `wiki/features/file-loading.md`, `wiki/features/xml-parsing-writing.md`, `wiki/features/translation-orchestration.md`, `wiki/features/string-sanitization.md`, `wiki/features/translation-api.md`, `wiki/features/language-list-import.md`, `wiki/features/language-templates.md`, `wiki/features/language-selection.md`, `wiki/log.md`.
+
 ## 2026-09-29 — Visible text selection in input fields
 
 **What changed:** Selected text in text fields was invisible: the default highlight is derived from `PrimaryColor`, nearly the same shade as the field background. Added `AccentBlue` and `AppTextSelectionColors` (translucent bright blue) in `theme/Colors.kt` and set `selectionColors` on both text fields: the shared `EditText` (search, folder path, template names) and the import paste box.

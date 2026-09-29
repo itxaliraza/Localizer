@@ -5,6 +5,7 @@ import data.model.LanguageTemplate
 import data.model.TranslationResult
 import data.translator.TranslationManager
 import data.util.FolderExtractor
+import data.util.LanguageCodeResolver
 import data.util.LanguageListParser
 import data.util.ModuleExtraction
 import data.util.TemplatesRepository
@@ -73,12 +74,13 @@ class HomeScreenViewModel(
      */
     fun applyTemplate(template: LanguageTemplate) = selectLanguagesByCode(template.langCodes)
 
-    /** Replace the current selection with the available languages whose code is in [codes]. */
+    /**
+     * Replace the current selection with the languages for [codes]. Each code is resolved through
+     * [LanguageCodeResolver], so old spellings from saved templates (`id`, `pt`, `itg`) still select
+     * their language after the list's codes change.
+     */
     fun selectLanguagesByCode(codes: Collection<String>) {
-        val codeSet = codes.toSet()
-        val matched = state.value.availableLanguages
-            .filter { it.langCode in codeSet }
-            .toMutableSet()
+        val matched = codes.mapNotNull { LanguageCodeResolver.resolve(it) }.toMutableSet()
         _state.update { it.copy(selectedLanguages = matched) }
     }
 

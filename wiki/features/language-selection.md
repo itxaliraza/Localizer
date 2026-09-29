@@ -8,7 +8,7 @@ Allows the user to pick which target languages to translate into. Supports indiv
 
 - `src/main/kotlin/languages_screen/LanguagesScreen.kt` — UI grid; handles click → `viewModel.updateSelectedLanguages()`
 - `src/main/kotlin/home_screen/HomeScreenViewModel.kt` — `updateSelectedLanguages(model, selectAll)`: adds/removes from `selectedLanguages`; `searchLanguage(text)`: filters `availableLanguages` into `filteredList`
-- `src/main/kotlin/data/AvailableLanguages.kt` — lazy `List<LanguageModel>` with 250+ entries loaded once at startup
+- `src/main/kotlin/data/AvailableLanguages.kt` — lazy `List<LanguageModel>` with 242 entries loaded once at startup. Codes follow what Android folders and Google Translate accept: Indonesian `in` (Android's legacy `values-in`; Google accepts it), Hebrew `iw`, Javanese `jw`, Latgalian `ltg`. Portuguese is offered only as Portuguese (Portugal) `pt-PT`. Other spellings are mapped by `LanguageCodeResolver`
 - `src/main/kotlin/domain/model/LanguagesModel.kt` — `LanguageModel(langName, nativeName, langCode, onlyWebTranslate)`
 
 ## State & data
