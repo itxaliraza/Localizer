@@ -26,7 +26,7 @@ UI (Composables)
 - **Stateless composables**: All composables receive state and callbacks; no local mutable state except ephemeral UI flags (scroll position, dialog visibility).
 - **Single ViewModel**: The entire app has one ViewModel (`HomeScreenViewModel`). `LanguagesScreen` receives it as a parameter from `HomeScreenNew`.
 - **Object utilities**: `FilesHelper`, `FolderExtractor`, `LocalizationUtils` are Kotlin `object`s (singletons with no injected dependencies). They are called directly, not injected.
-- **Koin factory scope**: All DI registrations are `factory` (new instance per injection point). The ViewModel is effectively a singleton because Koin is only asked for it once (at `koinInject()` call site in `HomeScreenNew`).
+- **Koin factory scope**: DI registrations are `factory` (new instance per injection point), except `TemplatesRepository`, which is `single`. The ViewModel is effectively a singleton because Koin is only asked for it once (at `koinInject()` call site in `HomeScreenNew`).
 - **No repository interface for files**: File I/O goes through `FolderExtractor` and `FilesHelper` objects directly — no interface abstraction.
 - **Translation API interfaces**: `TranslatorApis` lets `MyTranslatorRepoImpl` hold the three API impls polymorphically; `TranslationRepository` lets `TranslationManager` be tested without the network. Both are faked in `src/test/kotlin`.
 
@@ -40,7 +40,7 @@ UI (Composables)
 
 ## Key Architectural Constraints
 
-- **No persistence**: No database, no SharedPreferences, no disk cache. All state is in-memory and lost on close.
+- **Minimal persistence**: The only on-disk state is language templates (`TemplatesRepository` → `~/.fast-localizer/templates.json`). No database or cache; all other state is in-memory and lost on close.
 - **Single window, single screen**: No navigation graph. The entire app is one Compose window containing one screen.
 - **AWT integration**: Window management (dragging, maximize, minimize) uses `java.awt` directly, bypassing Compose Desktop's built-in window decorations.
 - **Network-only translation**: Requires internet; there is no offline fallback.

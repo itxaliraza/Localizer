@@ -61,7 +61,7 @@ compose.desktop {
             targetFormats(TargetFormat.Exe)
             modules("java.instrument", "java.management", "jdk.unsupported")
             packageName = "Fast Localizer"
-            packageVersion = "5.0.0"
+            packageVersion = (project.findProperty("appVersion") as String?) ?: "9.0.1"
             windows {
                 perUserInstall = true
                 shortcut = true
@@ -87,3 +87,7 @@ This project has `local.properties` pointing at an Android SDK path (legacy from
 ## No Flavors / Signing
 
 Single build target. No product flavors, no signing config.
+
+## Release CI
+
+`.github/workflows/release.yml` runs on every pushed tag matching `*.*.*` or `v*.*.*`. On a `windows-latest` runner with JDK 21 it runs `./gradlew test packageExe -PappVersion=<tag without leading v>`, then attaches `build/compose/binaries/main/exe/*.exe` to that tag's GitHub Release (created if missing, with auto-generated notes). Failing tests block the release. `packageVersion` reads the `appVersion` Gradle property and falls back to the hardcoded value for local builds. The value must be `MAJOR.MINOR.BUILD`, so the tag must be numeric (e.g. `10.0.0`). In PowerShell, quote the argument: `"-PappVersion=10.0.0"`.

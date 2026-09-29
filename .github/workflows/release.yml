@@ -1,0 +1,40 @@
+# Builds the Windows installer when a version tag is pushed and attaches it to that tag's GitHub Release.
+# Usage: git tag 10.0.0 && git push origin 10.0.0   (a leading "v" is allowed: v10.0.0)
+name: Release EXE
+
+on:
+  push:
+    tags:
+      - '*.*.*'
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Resolve version from tag
+        id: version
+        shell: bash
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Test and package
+        shell: bash
+        run: ./gradlew test packageExe -PappVersion=${{ steps.version.outputs.value }} --console=plain
+
+      - name: Upload installer to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/compose/binaries/main/exe/*.exe
+          generate_release_notes: true

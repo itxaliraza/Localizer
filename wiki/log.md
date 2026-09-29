@@ -4,6 +4,24 @@ Append-only. One entry per change session. Format: `## YYYY-MM-DD — <summary>`
 
 ---
 
+## 2026-09-29 — Auto-build EXE on tag push
+
+**What changed:** Added a GitHub Actions workflow that runs tests, builds the Windows EXE and attaches it to the GitHub Release whenever a version tag is pushed. `packageVersion` now reads the `-PappVersion` Gradle property (falling back to `9.0.1`, the first auto-released tag) so the installer version follows the tag.
+
+**Files touched:** `.github/workflows/release.yml` (new), `build.gradle.kts`, `wiki/infra/build.md`, `wiki/log.md`, `CLAUDE.md`.
+
+## 2026-09-29 — Installer version set to 9.0.0
+
+**What changed:** Set `packageVersion` to `9.0.0` to match the git tag, and built `build/compose/binaries/main/exe/Fast Localizer-9.0.0.exe` from the 9.0.0 source.
+
+**Files touched:** `build.gradle.kts`, `wiki/infra/build.md`, `wiki/log.md`.
+
+## 2026-09-29 — Merge origin/master into feat/new_ui; expand CLAUDE.md; fix stale wiki facts
+
+**What changed:** Merged `origin/master` (translation-correctness fixes, dependency upgrades, test suite) into `feat/new_ui`. Expanded `CLAUDE.md` with build and test commands, a big-picture architecture summary, and a note that log entries go newest-first. Fixed stale wiki facts: `architecture.md` now mentions template persistence and the `single`-scoped `TemplatesRepository`; `infra/build.md` shows `packageVersion` 7.0.0.
+
+**Files touched:** `CLAUDE.md`, `wiki/architecture.md`, `wiki/infra/build.md`, `wiki/log.md`.
+
 ## 2026-09-20 — Ship check: real block is HTTP 429 on API2; status check, scraper out of the rotation, escalating cool-down
 
 **Reported:** a new real-run log: 8× `A JSONArray text must start with '['` at the start, `Api1 error: translation container not found` at `api 0` while API3 was translating, and the question "check and verify so I can ship".

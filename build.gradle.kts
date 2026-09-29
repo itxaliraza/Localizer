@@ -14,9 +14,7 @@ repositories {
     maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
     google()
 }
-//kotlin {
-//    jvmToolchain(22)
-//}
+
 dependencies {
     // Note, if you develop a library, you should use compose.desktop.common.
     // compose.desktop.currentOs should be used in launcher-sourceSet
@@ -65,7 +63,8 @@ compose.desktop {
             // testing, so this is precautionary, not a fix for an observed failure.
             modules("java.instrument", "java.management", "jdk.unsupported")
             packageName = "Fast Localizer"
-            packageVersion = "5.0.0"
+            // CI passes -PappVersion=<tag> (see .github/workflows/release.yml); local builds use the fallback.
+            packageVersion = (project.findProperty("appVersion") as String?) ?: "9.0.1"
             windows {
                 perUserInstall = true  // Ensures the app is installed per user, not system-wide
                 shortcut = true
