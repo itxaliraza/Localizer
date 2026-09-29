@@ -1,6 +1,7 @@
 package data.translator.apis
 
 import data.network.client.NetworkClient
+import data.network.client.NetworkClient.snippet
 import data.network.client.RequestTypes
 import data.network.NetworkResponse
 import data.network.doIfSuccessOrFailure
@@ -8,6 +9,7 @@ import data.translator.api_interface.TranslatorApis
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
+import org.json.JSONException
 import java.lang.StringBuilder
 import java.net.URLEncoder
 import kotlin.coroutines.cancellation.CancellationException
@@ -54,12 +56,17 @@ class TranslatorApi2Impl : TranslatorApis {
 
     private fun getTranslationData(to_translate: String): String {
         val sb = StringBuilder()
-        val jSONArray = JSONArray(to_translate).getJSONArray(0)
-        for (i in 0 until jSONArray.length()) {
-            val string = jSONArray.getJSONArray(i).getString(0)
-            if (string.isNotEmpty() && string != "null") {
-                sb.append(string)
+        try {
+            val jSONArray = JSONArray(to_translate).getJSONArray(0)
+            for (i in 0 until jSONArray.length()) {
+                val string = jSONArray.getJSONArray(i).getString(0)
+                if (string.isNotEmpty() && string != "null") {
+                    sb.append(string)
+                }
             }
+        } catch (e: JSONException) {
+            // Say what came back: usually an HTML block page, not a translation.
+            throw Exception("Api2 error: not a JSON translation (${to_translate.snippet()})")
         }
         return sb.toString()
     }

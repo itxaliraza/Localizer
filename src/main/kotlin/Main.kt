@@ -50,16 +50,23 @@ import java.awt.event.MouseEvent
 import java.awt.event.MouseMotionAdapter
 
 
-fun main() = application {
-    Window(
-        onCloseRequest = ::exitApplication,
-        title = "Fast Localizer",
-        undecorated = true,
-        icon = painterResource(Res.drawable.app_icon),
-    ) {
-        window.minimumSize = Dimension(850, 600)
-        App(window) {
-            exitApplication()
+fun main() {
+    // Koin must be started exactly once, outside composition: starting it inside a composable throws
+    // KoinApplicationAlreadyStartedException the first time that composable recomposes.
+    startKoin {
+        modules(SharedModule)
+    }
+    application {
+        Window(
+            onCloseRequest = ::exitApplication,
+            title = "Fast Localizer",
+            undecorated = true,
+            icon = painterResource(Res.drawable.app_icon),
+        ) {
+            window.minimumSize = Dimension(850, 600)
+            App(window) {
+                exitApplication()
+            }
         }
     }
 }
@@ -67,9 +74,6 @@ fun main() = application {
 @Composable
 @Preview
 fun App(window: Window, exitApp: () -> Unit) {
-    startKoin {
-        modules(SharedModule)
-    }
     MaterialTheme(colors = LightColors) {
         Column(modifier = Modifier.fillMaxSize().background(PrimaryColor)) {
             CustomTitleBar(window, exitApp)

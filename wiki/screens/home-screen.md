@@ -13,6 +13,7 @@ The main application screen. Left column holds the language selection grid; righ
 - `src/main/kotlin/home_screen/components/RectangleWithShadow.kt` — elevated card with optional blink animation; used for status/result boxes
 - `src/main/kotlin/home_screen/components/RoundedCard.kt` — material Card button with optional stroke; used for Load File and Start buttons
 - `src/main/kotlin/home_screen/components/TemplatesCard.kt` — Language Templates card: save current selection, apply/delete templates (see [language-templates.md](../features/language-templates.md))
+- `src/main/kotlin/theme/Colors.kt` — `WarningColor` (amber) used for the completion-problems headline
 
 ## State & data
 
@@ -44,6 +45,7 @@ The main application screen. Left column holds the language selection grid; righ
 - The `showFileLoadedSnackBar` / `fileLoadingStatus` snackbar is local state in the Composable, set in response to file-load one-time events and reused by `TemplatesCard`'s `onMessage` callback (save/apply/delete confirmations).
 - The "Open Now" button (shown on `TranslationCompleted`) calls `openDownloadsFolder(loadedPath)` via `Desktop.getDesktop().open()`.
 - "Stop Translation" button replaces "Start Translation" when `translationResult is UpdateProgress`.
+- **Completion area** (`TranslationCompleted` is a data class now — matched with `is`): if `!hasProblems` it shows the green "Translation Completed, Open Now" button as before. If `hasProblems` it shows an amber headline — "Nothing was translated — N string(s) failed" when `translatedKeys == 0`, else "Completed with problems: X translated, Y failed" — followed by up to `MAX_SHOWN_ISSUES` (6) `• <module> → <lang>: <reason>` lines and "… and N more", a **Retry failed strings** button (calls `viewModel.translate()`; works because the ViewModel re-reads the files after each run so only what is still missing is translated), and an "Open Folder" button only when something was actually translated. Previously this area always said "Completed", so an offline run looked like success.
 - The `UpdateProgress` branch renders a `Column` of `ProgressRow`s (private helper: label left, count right, full-width rounded bar below — so the two bars line up identically): an overall language-level bar showing a **count** `<n>/<total>` (e.g. `2/10`, not a percentage) and, when `totalStrings > 0`, a per-language string bar showing `<done>/<total>`. See [progress-reporting.md](../features/progress-reporting.md).
 - The right-hand control column is wrapped in `verticalScroll(rememberScrollState())` so its cards (path, templates, module list, controls, progress) stay reachable when content exceeds the window height. The nested `ModulesSelectionCard` keeps its own bounded `heightIn(max = 220.dp)` scroll, so same-direction nesting is valid.
 - `ModulesSelectionCard` (private Composable in `HomeScreenNew.kt`) lists each module with a `Checkbox`, its name, `<n> strings`, and a **View** action. A "Select all / Unselect all" toggle flips every module. `viewModel.toggleModule(resPath)` toggles one; `toggleModule("", selectAll = true)` toggles all. Start is disabled if no module is selected.

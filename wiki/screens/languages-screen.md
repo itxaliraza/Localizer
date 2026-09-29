@@ -31,5 +31,5 @@ Left panel of the main window. Displays a searchable, scrollable grid of all 250
 
 - Grid uses `LazyVerticalGrid` with `GridCells.Adaptive(145.dp)`.
 - Custom scrollbar is a `Box` with a draggable thumb overlay (not Compose's built-in `VerticalScrollbar`). Drag updates scroll position via `LazyGridState.scrollToItem()`.
-- `onlyWebTranslate` flag on `LanguageModel` indicates that only `TranslatorApi1Impl` (mobile web endpoint) can handle that language; the API layer routes accordingly.
+- `onlyWebTranslate` flag on `LanguageModel` used to mean "only `TranslatorApi1Impl` (mobile web endpoint) can handle this language". That was stale: the JSON endpoints handle 115 of those 116 languages, so routing now ignores the flag (see [translation-api.md](../features/translation-api.md)).
 - Search filters by both `langName` and `langCode` (case-insensitive contains).

@@ -31,4 +31,4 @@ Allows the user to pick which target languages to translate into. Supports indiv
 ## Notes
 
 - `MutableSet` inside an immutable `HomeScreenState` data class is a subtle pattern: the set is mutated in-place, then `state.update { it.copy(...) }` is called to trigger recomposition. This means reference equality of `selectedLanguages` doesn't change, but set membership does.
-- `onlyWebTranslate` on `LanguageModel` affects which API endpoint is used during translation (see [translation-api.md](translation-api.md)).
+- `onlyWebTranslate` on `LanguageModel` is informational only: it no longer affects endpoint routing (see [translation-api.md](translation-api.md)).

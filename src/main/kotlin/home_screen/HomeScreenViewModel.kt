@@ -12,9 +12,12 @@ import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class HomeScreenViewModel(
     private val translationManager: TranslationManager,
@@ -26,8 +29,12 @@ class HomeScreenViewModel(
     private val _oneTimeUiEvents:Channel<HomeScreenOneTimeEvents> = Channel()
     val oneTimeUiEvents = _oneTimeUiEvents.receiveAsFlow()
 
+    // One scope for the ViewModel's lifetime (was a fresh, unmanaged scope per call).
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     private var modules: List<ModuleExtraction> = emptyList()
     private var translationJob: Job? = null
+    private var loadJob: Job? = null
 
     init {
         _state.update {
@@ -104,7 +111,9 @@ class HomeScreenViewModel(
         _state.update {
             it.copy(translationResult = TranslationResult.Idle)
         }
-        CoroutineScope(Dispatchers.IO).launch {
+        // A newer load supersedes an older one still in flight, so a slow first load can't overwrite it.
+        loadJob?.cancel()
+        loadJob = scope.launch {
             modules = FolderExtractor.extractModules(path.trim())
 
             if (modules.isEmpty()) {
@@ -180,21 +189,37 @@ class HomeScreenViewModel(
 
 
     fun translate() {
+        if (translationJob?.isActive == true) return
         val selectedPaths = state.value.modules.filter { it.selected }.map { it.resPath }.toSet()
         val modulesToTranslate = modules.filter { it.resPath in selectedPaths }
         if (modulesToTranslate.isNotEmpty()) {
-            translationJob = CoroutineScope(Dispatchers.IO).launch {
-                translationManager.translate(
-                    state.value.selectedLanguages.toList(),
-                    modulesToTranslate,
-                    state.value.parallelTranslation
-                ).collectLatest { result ->
-                    _state.update {
-                        it.copy(translationResult = result)
+            translationJob = scope.launch {
+                try {
+                    translationManager.translate(
+                        state.value.selectedLanguages.toList(),
+                        modulesToTranslate,
+                        state.value.parallelTranslation
+                    ).collect { result ->
+                        _state.update {
+                            it.copy(translationResult = result)
+                        }
                     }
+                } finally {
+                    // The run (finished, failed or cancelled) may have written files. Re-read them so the next
+                    // run only translates what is still missing, instead of redoing everything from the
+                    // stale snapshot taken at load time.
+                    withContext(NonCancellable) { refreshModules() }
                 }
             }
         }
+    }
+
+    /** Re-reads the loaded modules from disk without touching the module/language selection. */
+    private suspend fun refreshModules() {
+        val path = state.value.loadedPath
+        if (path.isBlank()) return
+        val fresh = FolderExtractor.extractModules(path.trim())
+        if (fresh.isNotEmpty()) modules = fresh
     }
 
 
