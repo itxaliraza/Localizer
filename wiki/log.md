@@ -4,6 +4,12 @@ Append-only. One entry per change session. Format: `## YYYY-MM-DD — <summary>`
 
 ---
 
+## 2026-10-06 — Fix: two folders for one language overwrote each other (lost strings and plurals)
+
+**What changed:** When a module had two folders resolving to the same language (`values-in` + `values-id`, `values-iw` + `values-he`, `values-zh-rTW` + `values-zh-rHK`, `values-pt` + `values-pt-rBR`), `TranslationManager` keyed files by language (`associateBy`, last wins) but chose the write folder from `changeFileCodes`. One folder's content plus the new strings was written over the other folder, deleting strings and plurals only that folder had, and its genuinely missing keys looked already translated. Now each folder is its own `LanguageTarget`: the union of missing keys is translated once, then every folder is merged from its own content and written back to itself. Reproduced live with the reported plurals XML; regression tests added.
+
+**Files touched:** `src/main/kotlin/data/translator/TranslationManager.kt`, `src/test/kotlin/data/translator/TranslationManagerTest.kt`, `wiki/features/translation-orchestration.md`, `wiki/features/file-loading.md`, `CLAUDE.md`, `wiki/log.md`.
+
 ## 2026-09-29 — Language code changes: Indonesian `in`, Latgalian `ltg`, Portugal-only Portuguese; shared code resolver
 
 **What changed:**

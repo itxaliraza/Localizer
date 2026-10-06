@@ -101,25 +101,31 @@ class TranslationManager(
 
                 val filesXmlContent: Map<String, FileXmlData> =
                     FilesHelper.getFilesXmlContents(module.extraction.extractedFiles)
-                val transformedLangCodeMap: Map<String, FileXmlData> =
-                    filesXmlContent.values.associateBy { it.languageCode }
-                val basePairs = transformedLangCodeMap["en"]?.keyValuePairs ?: emptyMap()
+                // Every language folder is its own target. Two folders can mean one language (values-in +
+                // values-id, values-iw + values-he); each is merged from its OWN content and written back to
+                // ITSELF, so one folder's strings can never overwrite the other's.
+                val targetsByLang: Map<String, List<LanguageTarget>> = filesXmlContent
+                    .map { (fileName, data) -> LanguageTarget(FilesHelper.extractLanguageCode(fileName).first, data) }
+                    .groupBy { it.file.languageCode }
+                val basePairs = targetsByLang["en"]?.firstOrNull()?.file?.keyValuePairs ?: emptyMap()
 
                 langsToTranslate.forEach { lang ->
                     if (stoppedEarly) return@forEach
                     // Capture the units-done count for this unit so per-string updates (emitted below
                     // as each key finishes) carry a stable overall "completedUnits / totalUnits" count.
                     val completedSoFar = completed
+                    val targets = targetsByLang[lang.langCode] ?: listOf(
+                        // No folder yet: create one, named as a valid Android qualifier (pt-BR -> pt-rBR).
+                        LanguageTarget(
+                            FilesHelper.toAndroidResFolderCode(lang.langCode),
+                            FileXmlData(FilesHelper.EMPTY_STRINGS_XML, emptyMap(), lang.langCode)
+                        )
+                    )
                     val outcome = processTranslation(
                         lang,
-                        transformedLangCodeMap[lang.langCode] ?: FileXmlData(
-                            FilesHelper.EMPTY_STRINGS_XML,
-                            emptyMap(),
-                            lang.langCode
-                        ),
+                        targets,
                         basePairs,
                         outputDir,
-                        module.extraction.changeFileCodes,
                         parallelTranslation,
                         completedSoFar,
                         totalUnits,
@@ -151,20 +157,26 @@ class TranslationManager(
     }.flowOn(Dispatchers.IO)
 
 
+    /** One `values-<folderCode>/strings.xml` to fill in; [folderCode] is the folder's own qualifier. */
+    private class LanguageTarget(val folderCode: String, val file: FileXmlData)
+
     private suspend fun ProducerScope<TranslationResult>.processTranslation(
         lang: LanguageModel,
-        file: FileXmlData,
+        targets: List<LanguageTarget>,
         basePairs: Map<String, String>,
         tempDir: File,
-        changeFileCodes: Map<String, String>,
         parallelTranslation: Boolean,
         completedUnits: Int,
         totalUnits: Int,
         moduleName: String,
     ): UnitOutcome = withContext(Dispatchers.IO) {
 
-        val currentPairs = file.keyValuePairs
-        val missingKeys = basePairs.filterKeys { it !in currentPairs }
+        // Each target folder may be missing different keys; translate their union once and give each
+        // folder only what it lacks.
+        val missingPerTarget = targets.map { target ->
+            target to basePairs.filterKeys { it !in target.file.keyValuePairs }
+        }
+        val missingKeys: Map<String, String> = missingPerTarget.fold(emptyMap()) { acc, (_, missing) -> acc + missing }
 
         // Per-language string counter: emit an UpdateProgress every time a key finishes so the UI
         // can show "<done> / <total>" strings for the language currently being translated. The
@@ -234,23 +246,25 @@ class TranslationManager(
             )
         }
 
-        // Merge the freshly translated entries into the EXISTING target file so arrays, plurals,
-        // comments and translatable=false strings are preserved. Even a partial result is written.
-        try {
-            val finalContent = FilesHelper.mergeEntriesIntoXml(file.contents, usable)
-            val modifiedCode = changeFileCodes[file.languageCode] ?: file.languageCode
-            // Sanitize to a valid Android resource qualifier: e.g. pt-BR -> pt-rBR, zh-CN -> zh-rCN.
-            val folderCode = FilesHelper.toAndroidResFolderCode(modifiedCode)
-
-            FilesHelper.writeXmlToFile(
-                finalContent,
-                "${tempDir.path}/values-${folderCode}/strings.xml"
-            )
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            println("Language ${lang.langCode}: write failed: ${e.message}")
-            return@withContext UnitOutcome(0, total, "could not write strings.xml: ${e.message}")
+        // Merge the freshly translated entries into each folder's EXISTING file so arrays, plurals,
+        // comments and translatable=false strings are preserved, and write it back to that same folder.
+        // Even a partial result is written.
+        for ((target, missing) in missingPerTarget) {
+            val entries = usable.filterKeys { it in missing }
+            if (entries.isEmpty()) continue
+            try {
+                FilesHelper.writeXmlToFile(
+                    FilesHelper.mergeEntriesIntoXml(target.file.contents, entries),
+                    "${tempDir.path}/values-${target.folderCode}/strings.xml"
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                println("Language ${lang.langCode}: write to values-${target.folderCode} failed: ${e.message}")
+                return@withContext UnitOutcome(
+                    0, total, "could not write values-${target.folderCode}/strings.xml: ${e.message}"
+                )
+            }
         }
 
         UnitOutcome(

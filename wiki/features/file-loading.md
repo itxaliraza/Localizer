@@ -40,4 +40,4 @@ Resolves a user-supplied path into one or more translatable Android modules. The
 - The `values/` folder (English base) is included in the extraction; it provides the reference key set for detecting missing translations.
 - A module is only discovered if its `values/strings.xml` base file exists, so res folders without strings are ignored.
 - Backward compatible: pointing the app directly at a single `res/` folder still works (it becomes a one-element module list).
-- `changeFileCodes` in `ExtractionResult` maps from the on-disk code (e.g. `in`) to the canonical code (e.g. `id`) so written XML files use the right folder name.
+- `changeFileCodes` in `ExtractionResult` maps a resolved code to the on-disk qualifier it came from (e.g. `pt-PT` → `pt-rBR`). It is **no longer used for writing**: with two folders per language it held only one of them. `TranslationManager` now derives each file's own folder from its file name. Kept only because `FolderExtractorTest` covers it.

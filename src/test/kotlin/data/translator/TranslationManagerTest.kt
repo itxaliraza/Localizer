@@ -305,4 +305,58 @@ class TranslationManagerTest {
         assertFalse(result.issues.any { it.contains("not answering") }, result.issues.toString())
         assertEquals(setOf("a", "z"), parsed("fr").keys)
     }
+
+    // ---- two folders for one language (values-in + values-id, values-iw + values-he) ------------------
+
+    private val indonesian = LanguageModel("Indonesian", "Bahasa Indonesia", "in")
+
+    private fun writeLang(folder: String, body: String) {
+        File(res, folder).mkdirs()
+        File(res, "$folder/strings.xml").writeText("<resources>\n$body\n</resources>")
+    }
+
+    private fun parsedFolder(folder: String): Map<String, String> =
+        FilesHelper.parseXml(File(res, "$folder/strings.xml").readText())
+
+    @Test
+    fun `each folder of a language is merged and written on its own, nothing is overwritten`() {
+        writeBase(
+            """<string name="a">Hello</string>
+            <plurals name="left"><item quantity="one">%d left</item><item quantity="other">%d left</item></plurals>"""
+        )
+        // values-id already has everything, including the plurals; values-in only has the plain string.
+        writeLang(
+            "values-id",
+            """<string name="a">Halo</string>
+            <plurals name="left"><item quantity="one">sisa %d</item><item quantity="other">sisa %d</item></plurals>"""
+        )
+        writeLang("values-in", """<string name="a">Halo</string>""")
+
+        val result = completed(execute(repo { l, v -> "[${l.langCode}] $v" }, listOf(indonesian)))
+
+        // values-id is untouched: its plurals must survive.
+        assertEquals(
+            mapOf("a" to "Halo", "plurals:left:one" to "sisa %d", "plurals:left:other" to "sisa %d"),
+            parsedFolder("values-id")
+        )
+        // values-in gets the missing plurals added, keeps its string.
+        assertEquals(
+            mapOf("a" to "Halo", "plurals:left:one" to "[in] %d left", "plurals:left:other" to "[in] %d left"),
+            parsedFolder("values-in")
+        )
+        assertEquals(2, result.translatedKeys)
+        assertFalse(result.hasProblems)
+    }
+
+    @Test
+    fun `a new language with no folder is written to its own qualifier`() {
+        writeBase("""<plurals name="left"><item quantity="one">%d left</item><item quantity="other">%d left</item></plurals>""")
+
+        completed(execute(repo { l, v -> "[${l.langCode}] $v" }, listOf(indonesian)))
+
+        assertEquals(
+            mapOf("plurals:left:one" to "[in] %d left", "plurals:left:other" to "[in] %d left"),
+            parsedFolder("values-in")
+        )
+    }
 }
